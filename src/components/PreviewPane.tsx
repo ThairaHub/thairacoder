@@ -35,58 +35,35 @@ function parseFileStructure(text: string): TreeNode[] {
   const stack: { node: TreeNode; level: number }[] = [];
   
   for (const line of lines) {
-    // Skip empty lines
     if (!line.trim()) continue;
     
-    // Match tree structure patterns
-    const match = line.match(/^([│├└\s]*[├└]──\s*)(.*?)(\s*#.*)?$/);
-    if (!match) {
-      // Also handle simple indented structure
-      const simpleMatch = line.match(/^(\s*)(.*?)(\s*#.*)?$/);
-      if (!simpleMatch || !simpleMatch[2].trim()) continue;
-      
-      const level = Math.floor(simpleMatch[1].length / 2);
-      const name = simpleMatch[2].trim();
-      
-      if (name.includes('/') && name.endsWith('/')) {
-        // It's a folder
-        const folderName = name.replace('/', '');
-        const node: TreeNode = {
-          name: folderName,
-          type: 'folder',
-          expanded: level < 2,
-          children: []
-        };
-        
-        // Add to appropriate parent
-        if (level === 0) {
-          root.push(node);
-        } else {
-          // Find parent at level - 1
-          for (let i = stack.length - 1; i >= 0; i--) {
-            if (stack[i].level === level - 1) {
-              stack[i].node.children?.push(node);
-              break;
-            }
-          }
-        }
-        
-        // Update stack
-        stack.length = level + 1;
-        stack[level] = { node, level };
-      }
+    // Match various tree patterns: ├──, └──, │, or simple dot notation
+    const treeMatch = line.match(/^([│├└\s]*)(├──|└──)\s*(.*?)(\s*#.*)?$/);
+    const dotMatch = line.match(/^(\s*)(\.|\w+[\/]?)\s*(.*?)(\s*#.*)?$/);
+    
+    let level = 0;
+    let name = '';
+    let isFolder = false;
+    
+    if (treeMatch) {
+      const prefix = treeMatch[1] + treeMatch[2];
+      name = treeMatch[3].trim();
+      level = Math.floor((prefix.match(/[│├└]/g) || []).length);
+      isFolder = name.endsWith('/') || name.includes('/');
+    } else if (dotMatch && dotMatch[2] !== '.') {
+      // Skip lines that start with just a dot
+      const indent = dotMatch[1];
+      name = dotMatch[2] + (dotMatch[3] || '');
+      level = Math.floor(indent.length / 4); // Assume 4-space indentation
+      isFolder = name.endsWith('/');
+    } else {
       continue;
     }
     
-    const prefix = match[1];
-    const name = match[2].trim();
+    if (!name) continue;
     
-    // Calculate level based on prefix
-    const level = Math.floor(prefix.replace(/[^│├└]/g, '').length);
-    
-    // Determine if it's a folder (ends with /) or file
-    const isFolder = name.endsWith('/') || name.includes('/')
-    const cleanName = name.replace(/\/$/, '');
+    // Clean up name
+    const cleanName = name.replace(/\/$/, '').replace(/^\.\//, '');
     
     const node: TreeNode = {
       name: cleanName,
@@ -99,18 +76,23 @@ function parseFileStructure(text: string): TreeNode[] {
     if (level === 0) {
       root.push(node);
     } else {
-      // Find parent
+      // Find the correct parent
+      let parent = null;
       for (let i = stack.length - 1; i >= 0; i--) {
         if (stack[i].level === level - 1 && stack[i].node.children) {
-          stack[i].node.children.push(node);
+          parent = stack[i].node;
           break;
         }
       }
+      if (parent && parent.children) {
+        parent.children.push(node);
+      }
     }
     
-    // Update stack for folders
+    // Update stack
     if (isFolder) {
-      stack.length = level + 1;
+      // Trim stack to current level and add this folder
+      stack.splice(level);
       stack[level] = { node, level };
     }
   }
@@ -135,15 +117,23 @@ function parseCodeBlocks(text: string): CodeBlock[] {
   return codeBlocks;
 }
 
-function FileTreeNode({ node, level = 0 }: { node: any; level?: number }) {
+function FileTreeNode({ node, level = 0, onFileClick }: { node: any; level?: number; onFileClick?: (filename: string) => void }) {
   const [isExpanded, setIsExpanded] = useState(node.expanded || false);
+  
+  const handleClick = () => {
+    if (node.type === 'folder') {
+      setIsExpanded(!isExpanded);
+    } else {
+      onFileClick?.(node.name);
+    }
+  };
   
   return (
     <div>
       <div 
         className="flex items-center space-x-2 py-1 px-2 hover:bg-message-bg/50 rounded cursor-pointer group"
         style={{ paddingLeft: `${level * 16 + 8}px` }}
-        onClick={() => node.type === 'folder' && setIsExpanded(!isExpanded)}
+        onClick={handleClick}
       >
         {node.type === 'folder' ? (
           isExpanded ? <FolderOpen className="h-4 w-4 text-ai-glow" /> : <Folder className="h-4 w-4 text-muted-foreground" />
@@ -158,7 +148,7 @@ function FileTreeNode({ node, level = 0 }: { node: any; level?: number }) {
       {node.type === 'folder' && isExpanded && node.children && (
         <div>
           {node.children.map((child: any, index: number) => (
-            <FileTreeNode key={index} node={child} level={level + 1} />
+            <FileTreeNode key={index} node={child} level={level + 1} onFileClick={onFileClick} />
           ))}
         </div>
       )}
@@ -168,6 +158,7 @@ function FileTreeNode({ node, level = 0 }: { node: any; level?: number }) {
 
 export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
   const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   
   // Parse file structure and code blocks from all assistant messages
   const { fileStructure, codeBlocks } = useMemo(() => {
@@ -185,8 +176,8 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
       parsedCodeBlocks.push(...blocks);
     }
     
-    // Fallback structure when no AI-generated structure is found
-    if (parsedStructure.length === 0) {
+    // Only use fallback if no structure was parsed at all
+    if (parsedStructure.length === 0 && parsedCodeBlocks.length === 0) {
       parsedStructure = [
         {
           name: 'src',
@@ -220,61 +211,93 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
     
     return { fileStructure: parsedStructure, codeBlocks: parsedCodeBlocks };
   }, [messages]);
+
+  // Find content for selected file
+  const selectedFileContent = useMemo(() => {
+    if (!selectedFile) return null;
+    return codeBlocks.find(block => 
+      block.filename === selectedFile || 
+      block.filename?.endsWith(selectedFile) ||
+      selectedFile.endsWith(block.filename || '')
+    );
+  }, [selectedFile, codeBlocks]);
+
+  const handleFileClick = (filename: string) => {
+    setSelectedFile(filename);
+  };
   
   if (activeView === 'code') {
     return (
-      <div className="h-full flex flex-col">
-        <div className="p-4 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground/90 mb-2">Project Structure</h3>
-          {codeBlocks.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {codeBlocks.length} code block{codeBlocks.length !== 1 ? 's' : ''} detected
-            </p>
-          )}
-        </div>
-        
-        <ScrollArea className="flex-1 p-2">
-          <div className="space-y-1 mb-4">
-            {fileStructure.map((node, index) => (
-              <FileTreeNode key={index} node={node} />
-            ))}
+      <div className="h-full flex">
+        {/* File Tree */}
+        <div className="w-80 border-r border-border flex flex-col">
+          <div className="p-4 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground/90 mb-2">Project Structure</h3>
+            {codeBlocks.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {codeBlocks.length} code block{codeBlocks.length !== 1 ? 's' : ''} detected
+              </p>
+            )}
           </div>
           
-          {/* Code Blocks Section */}
-          {codeBlocks.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <h4 className="text-xs font-semibold text-muted-foreground px-2 mb-2">CODE BLOCKS</h4>
-              {codeBlocks.map((block, index) => (
-                <Card key={index} className="p-3 bg-message-bg border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-ai-glow">
-                      {block.filename || `${block.language} code`}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {block.language}
-                    </span>
-                  </div>
-                  <div className="bg-background/30 rounded p-2 max-h-32 overflow-y-auto">
-                    <pre className="text-xs font-mono text-foreground/80">
-                      {block.content}
-                    </pre>
-                  </div>
-                </Card>
+          <ScrollArea className="flex-1 p-2">
+            <div className="space-y-1">
+              {fileStructure.map((node, index) => (
+                <FileTreeNode key={index} node={node} onFileClick={handleFileClick} />
               ))}
             </div>
+          </ScrollArea>
+          
+          <div className="p-4 border-t border-border">
+            <Card className="p-3 bg-message-bg border-border">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full" />
+                <span className="text-xs text-muted-foreground">Connected to Ollama</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Ready to generate and preview code
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* File Content Viewer */}
+        <div className="flex-1 flex flex-col">
+          {selectedFile ? (
+            <>
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4 text-ai-glow" />
+                  <span className="text-sm font-semibold text-foreground/90">{selectedFile}</span>
+                  {selectedFileContent && (
+                    <span className="text-xs text-muted-foreground">({selectedFileContent.language})</span>
+                  )}
+                </div>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  {selectedFileContent ? (
+                    <Card className="p-4 bg-message-bg border-border">
+                      <pre className="text-sm font-mono text-foreground/90 whitespace-pre-wrap">
+                        {selectedFileContent.content}
+                      </pre>
+                    </Card>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No content found for {selectedFile}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Select a file to view its content</p>
+              </div>
+            </div>
           )}
-        </ScrollArea>
-        
-        <div className="p-4 border-t border-border">
-          <Card className="p-3 bg-message-bg border-border">
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="h-2 w-2 bg-green-500 rounded-full" />
-              <span className="text-xs text-muted-foreground">Connected to Ollama</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Ready to generate and preview code
-            </div>
-          </Card>
         </div>
       </div>
     );
