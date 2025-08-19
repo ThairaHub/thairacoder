@@ -6,6 +6,8 @@ import { Send, Bot, User, Code, Eye } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { PreviewPane } from './PreviewPane';
 import { useOllama } from '@/hooks/useOllama';
+import { aiResponse } from '@/lib/types';
+
 
 interface Message {
   id: string;
@@ -52,7 +54,8 @@ export function ChatInterface() {
     setInput('');
 
     try {
-      const response = await sendMessage(input);
+      //const response = await sendMessage(input);
+      const response = aiResponse
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: response,
@@ -72,9 +75,9 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-full bg-background">
       {/* Chat Panel */}
-      <div className="flex flex-col w-1/2 bg-chat-bg border-r border-border">
+      <div className="flex flex-col w-1/3 bg-chat-bg border-r border-border">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
           <div className="flex items-center space-x-3">
@@ -133,7 +136,7 @@ export function ChatInterface() {
       </div>
 
       {/* Preview Panel */}
-      <div className="flex flex-col w-1/2 bg-preview-bg">
+      <div className="flex flex-col w-full bg-preview-bg">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Output</h2>

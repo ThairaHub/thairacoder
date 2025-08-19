@@ -1,7 +1,14 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { FileText, Folder, FolderOpen } from 'lucide-react';
+import { Check, Copy, FileText, Folder, FolderOpen } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { CodeBlock, CodeStructBlock, TreeNode } from '@/lib/types';
+import { transformCodeBlocks } from '@/lib/code-structure-block';
+import { FileTree } from './gpt-version/FileExplore';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { LivePreview } from './gpt-version/LivePreview';
+import { downloadCodeAsZip } from '@/lib/code-to-zip';
 
 interface Message {
   id: string;
@@ -15,122 +22,113 @@ interface PreviewPaneProps {
   activeView: 'preview' | 'code';
 }
 
-interface TreeNode {
-  name: string;
-  type: 'file' | 'folder';
-  expanded?: boolean;
-  children?: TreeNode[];
-}
-
-interface CodeBlock {
-  language: string;
-  filename?: string;
-  content: string;
-}
-
-// Parse file tree structure from text
-function parseFileStructure(text: string): TreeNode[] {
-  const lines = text.split('\n');
+export function parseFileStructure(text: string): TreeNode[] {
+  const lines = text.split(/\r?\n/);
   const root: TreeNode[] = [];
   const stack: { node: TreeNode; level: number }[] = [];
-  
+
   for (const line of lines) {
     if (!line.trim()) continue;
-    
-    // Match various tree patterns: ├──, └──, │, or simple dot notation
+
+    // Match tree-like (├──, └──, │) or indented dot notation
     const treeMatch = line.match(/^([│├└\s]*)(├──|└──)\s*(.*?)(\s*#.*)?$/);
-    const dotMatch = line.match(/^(\s*)(\.|\w+[\/]?)\s*(.*?)(\s*#.*)?$/);
-    
+    const dotMatch = line.match(/^(\s*)([^\/\s][^#]*?)(\/?)(\s*#.*)?$/);
+
     let level = 0;
-    let name = '';
+    let name = "";
     let isFolder = false;
-    
+    let comment: string | undefined;
+
     if (treeMatch) {
-      const prefix = treeMatch[1] + treeMatch[2];
-      name = treeMatch[3].trim();
-      level = Math.floor((prefix.match(/[│├└]/g) || []).length);
-      isFolder = name.endsWith('/') || name.includes('/');
-    } else if (dotMatch && dotMatch[2] !== '.') {
-      // Skip lines that start with just a dot
-      const indent = dotMatch[1];
-      name = dotMatch[2] + (dotMatch[3] || '');
-      level = Math.floor(indent.length / 4); // Assume 4-space indentation
-      isFolder = name.endsWith('/');
+      const [, prefix, , rawName, rawComment] = treeMatch;
+      name = rawName.trim();
+      comment = rawComment?.trim();
+      level = prefix.replace(/[^│]/g, "").length;
+      isFolder = name.endsWith("/");
+    } else if (dotMatch) {
+      const [, indent, rawName, slash, rawComment] = dotMatch;
+      name = rawName.trim();
+      comment = rawComment?.trim();
+      level = Math.floor(indent.length / 2); // configurable: treat 2 spaces as one level
+      isFolder = slash === "/";
     } else {
       continue;
     }
-    
+
     if (!name) continue;
-    
-    // Clean up name
-    const cleanName = name.replace(/\/$/, '').replace(/^\.\//, '');
-    
+
     const node: TreeNode = {
-      name: cleanName,
-      type: isFolder ? 'folder' : 'file',
+      name,
+      type: isFolder ? "folder" : "file",
       expanded: level < 2,
-      children: isFolder ? [] : undefined
+      children: isFolder ? [] : undefined,
+      comment,
     };
-    
-    // Add to appropriate parent
+
     if (level === 0) {
       root.push(node);
     } else {
-      // Find the correct parent
-      let parent = null;
+      // Find closest parent
+      let parent: TreeNode | null = null;
       for (let i = stack.length - 1; i >= 0; i--) {
         if (stack[i].level === level - 1 && stack[i].node.children) {
           parent = stack[i].node;
           break;
         }
       }
-      if (parent && parent.children) {
+      if (parent?.children) {
         parent.children.push(node);
       }
     }
-    
-    // Update stack
+
+    // Update stack only for folders
     if (isFolder) {
-      // Trim stack to current level and add this folder
       stack.splice(level);
       stack[level] = { node, level };
     }
   }
-  
+
   return root;
 }
 
+
 // Parse code blocks from markdown-style text
-function parseCodeBlocks(text: string): CodeBlock[] {
+export function parseCodeBlocks(text: string): CodeBlock[] {
   const codeBlocks: CodeBlock[] = [];
-  const codeBlockRegex = /```(\w+)?\s*(?:\n# (.+?))?\n([\s\S]*?)```/g;
-  
+  const codeBlockRegex = /```(\w+)?(?:\s+([^\n]+))?\n([\s\S]*?)```/g;
+
   let match;
   while ((match = codeBlockRegex.exec(text)) !== null) {
+
+    const [, language = "text", filename, content] = match;
     codeBlocks.push({
-      language: match[1] || 'text',
-      filename: match[2],
-      content: match[3].trim()
+      language,
+      filename: filename?.trim(),
+      content: content.trim(),
     });
   }
-  
+
+  console.log('codeBlocks', codeBlocks)
+
   return codeBlocks;
 }
 
+
 function FileTreeNode({ node, level = 0, onFileClick }: { node: any; level?: number; onFileClick?: (filename: string) => void }) {
   const [isExpanded, setIsExpanded] = useState(node.expanded || false);
-  
+
   const handleClick = () => {
+    
     if (node.type === 'folder') {
       setIsExpanded(!isExpanded);
     } else {
       onFileClick?.(node.name);
     }
   };
-  
+
   return (
     <div>
-      <div 
+      <div
         className="flex items-center space-x-2 py-1 px-2 hover:bg-message-bg/50 rounded cursor-pointer group"
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={handleClick}
@@ -144,7 +142,7 @@ function FileTreeNode({ node, level = 0, onFileClick }: { node: any; level?: num
           {node.name}
         </span>
       </div>
-      
+
       {node.type === 'folder' && isExpanded && node.children && (
         <div>
           {node.children.map((child: any, index: number) => (
@@ -159,23 +157,34 @@ function FileTreeNode({ node, level = 0, onFileClick }: { node: any; level?: num
 export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
   const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!selectedFileContent) return;
+    navigator.clipboard.writeText(selectedFileContent.content || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+  };
+
   // Parse file structure and code blocks from all assistant messages
   const { fileStructure, codeBlocks } = useMemo(() => {
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     let parsedStructure: TreeNode[] = [];
-    let parsedCodeBlocks: CodeBlock[] = [];
-    
+    let parsedCodeBlocks: CodeStructBlock[] = [];
+
     for (const message of assistantMessages) {
       const structure = parseFileStructure(message.content);
       const blocks = parseCodeBlocks(message.content);
-      
+
       if (structure.length > 0) {
         parsedStructure = structure; // Use the latest structure found
       }
-      parsedCodeBlocks.push(...blocks);
+
+      parsedCodeBlocks = transformCodeBlocks(blocks)
+      //parsedCodeBlocks.push(...blocks);
+      console.log('NewParsedCodeBlocks', parsedCodeBlocks)
     }
-    
+
     // Only use fallback if no structure was parsed at all
     if (parsedStructure.length === 0 && parsedCodeBlocks.length === 0) {
       parsedStructure = [
@@ -189,7 +198,7 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
               type: 'folder',
               expanded: true,
               children: [
-                { name: 'ChatInterface.tsx', type: 'file' },
+                { name: 'ChatInterface.tsx', type: 'file', comment: `import { useEffect, useState } from 'react';\nimport TodoList from '../components/TodoList';\nimport { fetchTodos, createTodo } from '../utils/api';\nimport styles from '../styles/Home.module.css';\n\nexport default function Home() {\n  const [todos, setTodos] = useState([]);\n  const [title, setTitle] = useState('');\n\n  useEffect(() => {\n    loadTodos();\n  }, []);\n\n  const loadTodos = async () => {\n    const data = await fetchTodos();\n    setTodos(data);\n  };\n\n  const handleAdd = async (e: React.FormEvent) => {\n    e.preventDefault();\n    if (!title.trim()) return;\n    await createTodo({ title });\n    setTitle('');\n    loadTodos();\n  };\n\n  return (\n    <div className={styles.container}>\n      <h1>Todo List</h1>\n      <form onSubmit={handleAdd}>\n        <input\n          type=\"text\"\n          value={title}\n          onChange={(e) => setTitle(e.target.value)}\n          placeholder=\"New todo\"\n          className={styles.input}\n        />\n        <button type=\"submit\" className={styles.button}>Add</button>\n      </form>\n      <TodoList todos={todos} onDelete={loadTodos} />\n    </div>\n  );\n}` },
                 { name: 'ChatMessage.tsx', type: 'file' },
                 { name: 'PreviewPane.tsx', type: 'file' },
               ]
@@ -208,24 +217,35 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
         }
       ];
     }
-    
+
     return { fileStructure: parsedStructure, codeBlocks: parsedCodeBlocks };
   }, [messages]);
 
-  // Find content for selected file
+  // Recursive search to find file by filename
+  function findFileByName(nodes: CodeStructBlock[], filename: string): CodeStructBlock | null {
+    for (const node of nodes) {
+      if (node.type === 'file' && node.filename === filename) {
+        return node;
+      }
+      if (node.type === 'folder' && node.children) {
+        const found = findFileByName(node.children, filename);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  // In your component
   const selectedFileContent = useMemo(() => {
     if (!selectedFile) return null;
-    return codeBlocks.find(block => 
-      block.filename === selectedFile || 
-      block.filename?.endsWith(selectedFile) ||
-      selectedFile.endsWith(block.filename || '')
-    );
+    return findFileByName(codeBlocks, selectedFile);
   }, [selectedFile, codeBlocks]);
 
   const handleFileClick = (filename: string) => {
+        console.log('selectedFileContent', selectedFileContent)
     setSelectedFile(filename);
   };
-  
+
   if (activeView === 'code') {
     return (
       <div className="h-full flex">
@@ -239,15 +259,24 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
               </p>
             )}
           </div>
-          
+                <div className="flex justify-end p-2">
+        <button
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={() => downloadCodeAsZip(codeBlocks)}
+        >
+          Download All Code
+        </button>
+      </div>
+
           <ScrollArea className="flex-1 p-2">
             <div className="space-y-1">
-              {fileStructure.map((node, index) => (
+              {/* {codeBlocks.map((node, index) => (
                 <FileTreeNode key={index} node={node} onFileClick={handleFileClick} />
-              ))}
+              ))} */}
+              <FileTree nodes={codeBlocks} onFileClick={handleFileClick} />
             </div>
           </ScrollArea>
-          
+
           <div className="p-4 border-t border-border">
             <Card className="p-3 bg-message-bg border-border">
               <div className="flex items-center space-x-2 mb-2">
@@ -274,17 +303,55 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
                   )}
                 </div>
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 relative">
                 <div className="p-4">
                   {selectedFileContent ? (
-                    <Card className="p-4 bg-message-bg border-border">
-                      <pre className="text-sm font-mono text-foreground/90 whitespace-pre-wrap">
-                        {selectedFileContent.content}
-                      </pre>
+                    <Card className="p-4 bg-message-bg border-border relative">
+                      {/* Copy button */}
+                      <button
+                        onClick={handleCopy}
+                        className="absolute top-2 left-2 p-1 rounded hover:bg-gray-200 flex items-center justify-center"
+                        title={copied ? 'Copied!' : 'Copy to clipboard'}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-gray-500" />
+                        )}
+                      </button>
+
+                      {/* Syntax highlighted code FULL LINE*/}
+                      <SyntaxHighlighter
+                        language={selectedFileContent.language || 'text'}
+                        style={oneDark}
+                        showLineNumbers
+                        wrapLines
+                        customStyle={{ margin: 0, background: 'transparent' }}
+                      >
+                        {selectedFileContent.content || ''}
+                      </SyntaxHighlighter>
+
+
+                      {/* Syntax highlighted code BREAKING LINE*/}
+                      {/* <SyntaxHighlighter
+  language={selectedFileContent.language || 'text'}
+  style={oneDark}
+  showLineNumbers
+  wrapLines
+  lineProps={{ style: { wordBreak: 'break-word', whiteSpace: 'pre-wrap' } }}
+  customStyle={{
+    margin: 0,
+    background: 'transparent',
+    overflowWrap: 'break-word',
+    whiteSpace: 'pre-wrap', // ensures long lines wrap
+  }}
+>
+  {selectedFileContent.content || ''}
+</SyntaxHighlighter> */}
                     </Card>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      No content found for {selectedFile}
+                      No content found for {selectedFileContent?.filename || 'file'}
                     </div>
                   )}
                 </div>
@@ -300,6 +367,19 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
           )}
         </div>
       </div>
+    );
+  } else {
+    return (
+     
+        <div className="p-8">
+                <LivePreview
+            entry={selectedFileContent?.filename || ''}
+            modules={codeBlocks
+              .filter(block => block.language === 'jsx' || block.language === 'tsx')
+              .map(block => ({ filename: block.filename || '', content: block.content }))}
+          />
+          </div>
+
     );
   }
 
@@ -331,7 +411,7 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
                 Generate React components, hooks, and utilities with AI assistance
               </p>
             </Card>
-            
+
             <Card className="p-6 bg-message-bg border-border hover:border-ai-glow/30 transition-colors">
               <div className="text-ai-glow mb-2">
                 <Folder className="h-6 w-6" />
