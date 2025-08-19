@@ -30,7 +30,7 @@ export function ChatInterface() {
   const [selectedFilesForContext, setSelectedFilesForContext] = useState<CodeStructBlock[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { sendMessage, isLoading } = useOllama();
+  const { sendMessage, isLoading, provider, setProvider } = useOllama();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,6 +54,16 @@ export function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
 
+    // Create initial assistant message for streaming
+    const assistantMessageId = (Date.now() + 1).toString();
+    const initialAssistantMessage: Message = {
+      id: assistantMessageId,
+      content: '',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, initialAssistantMessage]);
+
     try {
       // Build context from selected files
       const context = selectedFilesForContext.length > 0 
@@ -62,23 +72,32 @@ export function ChatInterface() {
           ).join('\n\n---\n\n')
         : undefined;
 
-      //const response = await sendMessage(input, context);
-      const response = aiResponse
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      // Stream response and update message in real-time
+      const response = await sendMessage(input, context, (chunk: string) => {
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: msg.content + chunk }
+            : msg
+        ));
+      });
+
+      // Final update to ensure complete response
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, content: response }
+          : msg
+      ));
+
     } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Sorry, I encountered an error. Please make sure Ollama is running and try again.',
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // Replace the empty assistant message with error message
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { 
+              ...msg, 
+              content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. ${provider === 'ollama' ? 'Please make sure Ollama is running and try again.' : 'Please check your API key and try again.'}` 
+            }
+          : msg
+      ));
     }
   };
 
@@ -97,7 +116,9 @@ export function ChatInterface() {
               <h1 className="text-lg font-semibold bg-gradient-to-r from-ai-glow to-ai-glow-soft bg-clip-text text-transparent">
                 Local AI Assistant
               </h1>
-              <p className="text-sm text-muted-foreground">Powered by Ollama</p>
+              <p className="text-sm text-muted-foreground">
+                Powered by {provider === 'ollama' ? 'Ollama' : 'Gemini'}
+              </p>
             </div>
           </div>
         </div>
@@ -121,6 +142,28 @@ export function ChatInterface() {
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
+
+        {/* Provider Selection */}
+        <div className="px-4 py-2 border-t border-border">
+          <div className="flex space-x-1 bg-message-bg rounded-lg p-1">
+            <Button
+              variant={provider === 'ollama' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setProvider('ollama')}
+              className="flex-1 text-xs"
+            >
+              Ollama
+            </Button>
+            <Button
+              variant={provider === 'gemini' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setProvider('gemini')}
+              className="flex-1 text-xs"
+            >
+              Gemini
+            </Button>
+          </div>
+        </div>
 
         {/* Input */}
         <div className="p-4 border-t border-border bg-message-bg/50">

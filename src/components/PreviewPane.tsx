@@ -4,6 +4,7 @@ import { Check, Copy, FileText, Folder, FolderOpen } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { CodeBlock, CodeStructBlock, TreeNode } from '@/lib/types';
 import { transformCodeBlocks } from '@/lib/code-structure-block';
+import { mergeCodeStructBlocks, getAllFilesFromBlocks } from '@/lib/code-structure-merge';
 import { FileTreeNodeWithSelection } from './gpt-version/FileTreeNodeWithSelection';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -173,23 +174,24 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   const { fileStructure, codeBlocks } = useMemo(() => {
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     let parsedStructure: TreeNode[] = [];
-    let parsedCodeBlocks: CodeStructBlock[] = [];
+    let mergedCodeBlocks: CodeStructBlock[] = [];
 
     for (const message of assistantMessages) {
       const structure = parseFileStructure(message.content);
       const blocks = parseCodeBlocks(message.content);
+      const transformedBlocks = transformCodeBlocks(blocks);
 
       if (structure.length > 0) {
         parsedStructure = structure; // Use the latest structure found
       }
 
-      parsedCodeBlocks = transformCodeBlocks(blocks)
-      //parsedCodeBlocks.push(...blocks);
-      console.log('NewParsedCodeBlocks', parsedCodeBlocks)
+      // Merge new blocks with existing ones instead of replacing
+      mergedCodeBlocks = mergeCodeStructBlocks(mergedCodeBlocks, transformedBlocks);
+      console.log('MergedCodeBlocks', mergedCodeBlocks);
     }
 
     // Only use fallback if no structure was parsed at all
-    if (parsedStructure.length === 0 && parsedCodeBlocks.length === 0) {
+    if (parsedStructure.length === 0 && mergedCodeBlocks.length === 0) {
       parsedStructure = [
         {
           name: 'src',
@@ -221,7 +223,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
       ];
     }
 
-    return { fileStructure: parsedStructure, codeBlocks: parsedCodeBlocks };
+    return { fileStructure: parsedStructure, codeBlocks: mergedCodeBlocks };
   }, [messages]);
 
   // Recursive search to find file by filename
@@ -244,23 +246,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
     return findFileByName(codeBlocks, selectedFile);
   }, [selectedFile, codeBlocks]);
 
-  // Get all files recursively for selection
-  const getAllFiles = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
-    const files: CodeStructBlock[] = [];
-    const traverse = (nodes: CodeStructBlock[]) => {
-      for (const node of nodes) {
-        if (node.type === 'file' && node.filename) {
-          files.push(node);
-        } else if (node.type === 'folder' && node.children) {
-          traverse(node.children);
-        }
-      }
-    };
-    traverse(blocks);
-    return files;
-  };
-
-  const allFiles = useMemo(() => getAllFiles(codeBlocks), [codeBlocks]);
+  const allFiles = useMemo(() => getAllFilesFromBlocks(codeBlocks), [codeBlocks]);
 
   const handleFileSelection = (filename: string, selected: boolean) => {
     const newSelection = new Set(selectedFiles);
