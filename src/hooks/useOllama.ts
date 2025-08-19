@@ -67,7 +67,7 @@ export function useOllama() {
 
     try {
       if (provider === 'gemini') {
-        return await sendGeminiMessage(message, context);
+        return await sendGeminiMessage(message, context, onStreamUpdate);
       } else {
         return await sendOllamaMessage(message, context, onStreamUpdate);
       }
@@ -137,95 +137,60 @@ export function useOllama() {
     }
   };
 
-  const sendGeminiMessage = async (
-    message: string,
-    context?: string,
-    onStreamUpdate?: (chunk: string) => void
-  ): Promise<string> => {
-    console.log("Calling Gemini (streaming)");
+const sendGeminiMessage = async (
+  message: string,
+  context?: string,
+  onStreamUpdate?: (chunk: string) => void
+): Promise<string> => {
+  const url = onStreamUpdate
+    ? "http://localhost:8000/gemini/stream"
+    : "http://localhost:8000/gemini/generate";
 
-    const API_KEY =
-      import.meta.env.VITE_GEMINI_API_KEY ||
-      localStorage.getItem("gemini_api_key");
-    if (!API_KEY) {
-      throw new Error(
-        "Gemini API key not found. Please set VITE_GEMINI_API_KEY or add it to localStorage."
-      );
-    }
+  
+  const prompt = getPrompt(message) + (context ? `\n\nContext (selected files):\n${context}` : '') 
 
-    const url = onStreamUpdate
-      ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${API_KEY}`
-      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text:
-                  getPrompt(message) +
-                  (context
-                    ? `\n\nContext (selected files):\n${context}`
-                    : ""),
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 8192,
-        },
-      }),
-    });
+  if (!response.ok) throw new Error(`HTTP error! ${response.status}`);
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error! status: ${response.status}`);
-    }
+  if (onStreamUpdate && response.body) {
+    console.log('entrei stream')
+    let full = "";
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-    // --- Streaming mode ---
-    if (onStreamUpdate && response.body) {
-      let fullResponse = "";
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n").filter((l) => l.trim());
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n").filter((line) => line.trim());
-
-          for (const line of lines) {
-            try {
-              const data = JSON.parse(line);
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                fullResponse += text;
-                onStreamUpdate(text);
-                console.log(text)
-              }
-            } catch {
-              // Skip invalid JSON lines
-            }
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line);
+          if (data.response) {
+            full += data.response;
+            onStreamUpdate(data.response);
+            console.log(data.response)
           }
+        } catch {
+          // skip invalid JSON
         }
-      } finally {
-        reader.releaseLock();
       }
-
-      return fullResponse;
     }
+    return full;
+  }
 
-    // --- Non-streaming mode ---
-    const data = await response.json();
-    return data.candidates[0]?.content?.parts?.[0]?.text || "No response generated";
-  };
+  const data = await response.json();
+  return data.response;
+};
+
+
 
 
   const checkOllamaStatus = async (): Promise<any> => {

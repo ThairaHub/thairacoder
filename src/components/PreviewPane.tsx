@@ -278,7 +278,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
               Download All Code
             </button>
           </div>
-          <div style={{ height: '600px', overflow: 'hidden' }}>
+          <div style={{ height: '400px', overflow: 'auto' }}>
             <ScrollArea className="flex-1 p-2">
               <div className="space-y-1">
                 {codeBlocks.map((node, index) => (
