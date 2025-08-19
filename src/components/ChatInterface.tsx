@@ -7,6 +7,7 @@ import { ChatMessage } from './ChatMessage';
 import { PreviewPane } from './PreviewPane';
 import { useOllama } from '@/hooks/useOllama';
 import { CodeStructBlock, aiResponse } from '@/lib/types';
+import ModelSelector from './OllamaModelSelector';
 
 
 interface Message {
@@ -26,11 +27,11 @@ export function ChatInterface() {
     },
   ]);
   const [input, setInput] = useState('');
-  const [activeView, setActiveView] = useState<'preview' | 'code'>('preview');
+  const [activeView, setActiveView] = useState<'preview' | 'code'>('code');
   const [selectedFilesForContext, setSelectedFilesForContext] = useState<CodeStructBlock[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { sendMessage, isLoading, provider, setProvider } = useOllama();
+  const { sendMessage, isLoading, provider, setProvider, model, setModel } = useOllama();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -164,6 +165,9 @@ export function ChatInterface() {
             </Button>
           </div>
         </div>
+        { provider === 'ollama' && (
+          <ModelSelector  model={model} setModel={setModel}/>
+        )}
 
         {/* Input */}
         <div className="p-4 border-t border-border bg-message-bg/50">

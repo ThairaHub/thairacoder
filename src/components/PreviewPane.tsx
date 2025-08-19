@@ -68,7 +68,7 @@ export function parseFileStructure(text: string): TreeNode[] {
       // Find closest parent
       let parent: TreeNode | null = null;
       for (let i = stack.length - 1; i >= 0; i--) {
-        if (stack[i].level === level - 1 && stack[i].node.children) {
+        if (stack[i]?.level === level - 1 && stack[i]?.node.children) {
           parent = stack[i].node;
           break;
         }
@@ -105,50 +105,7 @@ export function parseCodeBlocks(text: string): CodeBlock[] {
     });
   }
 
-  console.log('codeBlocks', codeBlocks)
-
   return codeBlocks;
-}
-
-
-function FileTreeNode({ node, level = 0, onFileClick }: { node: any; level?: number; onFileClick?: (filename: string) => void }) {
-  const [isExpanded, setIsExpanded] = useState(node.expanded || false);
-
-  const handleClick = () => {
-    
-    if (node.type === 'folder') {
-      setIsExpanded(!isExpanded);
-    } else {
-      onFileClick?.(node.name);
-    }
-  };
-
-  return (
-    <div>
-      <div
-        className="flex items-center space-x-2 py-1 px-2 hover:bg-message-bg/50 rounded cursor-pointer group"
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
-        onClick={handleClick}
-      >
-        {node.type === 'folder' ? (
-          isExpanded ? <FolderOpen className="h-4 w-4 text-ai-glow" /> : <Folder className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <FileText className="h-4 w-4 text-blue-400" />
-        )}
-        <span className="text-sm text-foreground/90 group-hover:text-foreground transition-colors">
-          {node.name}
-        </span>
-      </div>
-
-      {node.type === 'folder' && isExpanded && node.children && (
-        <div>
-          {node.children.map((child: any, index: number) => (
-            <FileTreeNode key={index} node={child} level={level + 1} onFileClick={onFileClick} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 interface PreviewPaneProps {
@@ -187,7 +144,6 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
 
       // Merge new blocks with existing ones instead of replacing
       mergedCodeBlocks = mergeCodeStructBlocks(mergedCodeBlocks, transformedBlocks);
-      console.log('MergedCodeBlocks', mergedCodeBlocks);
     }
 
     // Only use fallback if no structure was parsed at all
@@ -256,7 +212,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
       newSelection.delete(filename);
     }
     setSelectedFiles(newSelection);
-    
+
     // Get selected file objects and call callback
     const selectedFileObjects = allFiles.filter(file => newSelection.has(file.filename || ''));
     onFilesSelected?.(selectedFileObjects);
@@ -274,13 +230,12 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   };
 
   const handleFileClick = (filename: string) => {
-    console.log('selectedFileContent', selectedFileContent)
     setSelectedFile(filename);
   };
 
   if (activeView === 'code') {
     return (
-      <div className="h-full flex">
+      <div className="h-200 flex">
         {/* File Tree */}
         <div className="w-80 border-r border-border flex flex-col">
           <div className="p-4 border-b border-border">
@@ -315,28 +270,29 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
               </>
             )}
           </div>
-                <div className="flex justify-end p-2">
-        <button
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={() => downloadCodeAsZip(codeBlocks)}
-        >
-          Download All Code
-        </button>
-      </div>
-
-          <ScrollArea className="flex-1 p-2">
-            <div className="space-y-1">
-              {codeBlocks.map((node, index) => (
-                <FileTreeNodeWithSelection
-                  key={node.filename + index}
-                  node={node}
-                  onFileClick={handleFileClick}
-                  selectedFiles={selectedFiles}
-                  onFileSelection={handleFileSelection}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="flex justify-end p-2">
+            <button
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={() => downloadCodeAsZip(allFiles)}
+            >
+              Download All Code
+            </button>
+          </div>
+          <div style={{ height: '600px', overflow: 'hidden' }}>
+            <ScrollArea className="flex-1 p-2">
+              <div className="space-y-1">
+                {codeBlocks.map((node, index) => (
+                  <FileTreeNodeWithSelection
+                    key={node.filename + index}
+                    node={node}
+                    onFileClick={handleFileClick}
+                    selectedFiles={selectedFiles}
+                    onFileSelection={handleFileSelection}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
 
           <div className="p-4 border-t border-border">
             <Card className="p-3 bg-message-bg border-border">
@@ -381,7 +337,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                         )}
                       </button>
 
-                      {/* Syntax highlighted code FULL LINE*/}
+                      {/* Syntax highlighted code FULL LINE
                       <SyntaxHighlighter
                         language={selectedFileContent.language || 'text'}
                         style={oneDark}
@@ -390,25 +346,35 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                         customStyle={{ margin: 0, background: 'transparent' }}
                       >
                         {selectedFileContent.content || ''}
-                      </SyntaxHighlighter>
+                      </SyntaxHighlighter>*/}
 
 
                       {/* Syntax highlighted code BREAKING LINE*/}
-                      {/* <SyntaxHighlighter
-  language={selectedFileContent.language || 'text'}
-  style={oneDark}
-  showLineNumbers
-  wrapLines
-  lineProps={{ style: { wordBreak: 'break-word', whiteSpace: 'pre-wrap' } }}
-  customStyle={{
-    margin: 0,
-    background: 'transparent',
-    overflowWrap: 'break-word',
-    whiteSpace: 'pre-wrap', // ensures long lines wrap
-  }}
->
-  {selectedFileContent.content || ''}
-</SyntaxHighlighter> */}
+                      <div style={{ height: '600px', overflow: 'hidden' }}>
+                        <SyntaxHighlighter
+                          language={selectedFileContent.language || 'text'}
+                          style={oneDark}
+                          showLineNumbers
+                          wrapLines
+                          lineProps={{
+                            style: {
+                              wordBreak: 'break-word',
+                              whiteSpace: 'pre-wrap',
+                            },
+                          }}
+                          customStyle={{
+                            height: '100%',              // take full height of parent
+                            maxHeight: '100%',           // prevent overflowing
+                            margin: 0,
+                            background: 'transparent',
+                            overflow: 'auto',            // make it scrollable
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'pre-wrap',      // ensures long lines wrap
+                          }}
+                        >
+                          {selectedFileContent.content || ''}
+                        </SyntaxHighlighter></div>
+
                     </Card>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground text-sm">
@@ -431,15 +397,15 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
     );
   } else {
     return (
-     
-        <div className="p-8">
-                <LivePreview
-            entry={selectedFileContent?.filename || ''}
-            modules={codeBlocks
-              .filter(block => block.language === 'jsx' || block.language === 'tsx')
-              .map(block => ({ filename: block.filename || '', content: block.content }))}
-          />
-          </div>
+
+      <div className="p-8">
+        <LivePreview
+          entry={selectedFileContent?.filename || ''}
+          modules={codeBlocks
+            .filter(block => block.language === 'jsx' || block.language === 'tsx')
+            .map(block => ({ filename: block.filename || '', content: block.content }))}
+        />
+      </div>
 
     );
   }

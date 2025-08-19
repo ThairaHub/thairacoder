@@ -20,6 +20,8 @@ export interface CodeStructBlock {
   children?: CodeStructBlock[];
 }
 
+export type Model = 'gpt-oss:20b' | 'deepseek-r1:8b' | 'gemma3:12b'
+
 export const aiResponse = `
 \`\`\`txt
 root/

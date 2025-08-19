@@ -1,3 +1,4 @@
+import { Model } from '@/lib/types';
 import { useState } from 'react';
 
 interface OllamaResponse {
@@ -23,6 +24,7 @@ export function useOllama() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<Provider>('ollama');
+  const [model, setModel] = useState<string>('gemma3:4b')
 
   const codeGenPrompt = `
     You are a developer. You will only receive requests to generate pieces of code or project scaffolding. Always respond with **only code and file structures**—no explanations, no extra text.  
@@ -51,12 +53,12 @@ export function useOllama() {
   /**
    * Helper function to build the full AI prompt with the user’s request.
    */
-    const getPrompt = (request: string): string => {
+  const getPrompt = (request: string): string => {
     return `${codeGenPrompt}\n\nHere is the request: ${request}`;
   }
 
   const sendMessage = async (
-    message: string, 
+    message: string,
     context?: string,
     onStreamUpdate?: (chunk: string) => void
   ): Promise<string> => {
@@ -89,7 +91,7 @@ export function useOllama() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-oss:20b',
+        model: model,
         prompt: getPrompt(message) + (context ? `\n\nContext (selected files):\n${context}` : ''),
         stream: !!onStreamUpdate,
       }),
@@ -111,7 +113,7 @@ export function useOllama() {
 
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n').filter(line => line.trim());
-          
+
           for (const line of lines) {
             try {
               const data: OllamaResponse = JSON.parse(line);
@@ -135,27 +137,49 @@ export function useOllama() {
     }
   };
 
-  const sendGeminiMessage = async (message: string, context?: string): Promise<string> => {
-    const API_KEY = process.env.GEMINI_API_KEY || localStorage.getItem('gemini_api_key');
+  const sendGeminiMessage = async (
+    message: string,
+    context?: string,
+    onStreamUpdate?: (chunk: string) => void
+  ): Promise<string> => {
+    console.log("Calling Gemini (streaming)");
+
+    const API_KEY =
+      import.meta.env.VITE_GEMINI_API_KEY ||
+      localStorage.getItem("gemini_api_key");
     if (!API_KEY) {
-      throw new Error('Gemini API key not found. Please set GEMINI_API_KEY or add it to localStorage.');
+      throw new Error(
+        "Gemini API key not found. Please set VITE_GEMINI_API_KEY or add it to localStorage."
+      );
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-      method: 'POST',
+    const url = onStreamUpdate
+      ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${API_KEY}`
+      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+    const response = await fetch(url, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: getPrompt(message) + (context ? `\n\nContext (selected files):\n${context}` : '')
-          }]
-        }],
+        contents: [
+          {
+            parts: [
+              {
+                text:
+                  getPrompt(message) +
+                  (context
+                    ? `\n\nContext (selected files):\n${context}`
+                    : ""),
+              },
+            ],
+          },
+        ],
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 8192,
-        }
+        },
       }),
     });
 
@@ -163,14 +187,53 @@ export function useOllama() {
       throw new Error(`Gemini API error! status: ${response.status}`);
     }
 
-    const data: GeminiResponse = await response.json();
-    return data.candidates[0]?.content?.parts[0]?.text || 'No response generated';
+    // --- Streaming mode ---
+    if (onStreamUpdate && response.body) {
+      let fullResponse = "";
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n").filter((line) => line.trim());
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullResponse += text;
+                onStreamUpdate(text);
+                console.log(text)
+              }
+            } catch {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      return fullResponse;
+    }
+
+    // --- Non-streaming mode ---
+    const data = await response.json();
+    return data.candidates[0]?.content?.parts?.[0]?.text || "No response generated";
   };
 
-  const checkOllamaStatus = async (): Promise<boolean> => {
+
+  const checkOllamaStatus = async (): Promise<any> => {
     try {
       const response = await fetch('http://localhost:11434/api/tags');
-      return response.ok;
+      if (response.ok) {
+        return response.json();
+      }
     } catch {
       return false;
     }
@@ -183,5 +246,7 @@ export function useOllama() {
     error,
     provider,
     setProvider,
+    model,
+    setModel
   };
 }
