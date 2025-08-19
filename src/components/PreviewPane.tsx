@@ -4,7 +4,7 @@ import { Check, Copy, FileText, Folder, FolderOpen } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { CodeBlock, CodeStructBlock, TreeNode } from '@/lib/types';
 import { transformCodeBlocks } from '@/lib/code-structure-block';
-import { FileTree } from './gpt-version/FileExplore';
+import { FileTreeNodeWithSelection } from './gpt-version/FileTreeNodeWithSelection';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { LivePreview } from './gpt-version/LivePreview';
@@ -17,10 +17,6 @@ interface Message {
   timestamp: Date;
 }
 
-interface PreviewPaneProps {
-  messages: Message[];
-  activeView: 'preview' | 'code';
-}
 
 export function parseFileStructure(text: string): TreeNode[] {
   const lines = text.split(/\r?\n/);
@@ -154,9 +150,16 @@ function FileTreeNode({ node, level = 0, onFileClick }: { node: any; level?: num
   );
 }
 
-export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
+interface PreviewPaneProps {
+  messages: Message[];
+  activeView: 'preview' | 'code';
+  onFilesSelected?: (selectedFiles: CodeStructBlock[]) => void;
+}
+
+export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPaneProps) {
   const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -241,8 +244,51 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
     return findFileByName(codeBlocks, selectedFile);
   }, [selectedFile, codeBlocks]);
 
+  // Get all files recursively for selection
+  const getAllFiles = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
+    const files: CodeStructBlock[] = [];
+    const traverse = (nodes: CodeStructBlock[]) => {
+      for (const node of nodes) {
+        if (node.type === 'file' && node.filename) {
+          files.push(node);
+        } else if (node.type === 'folder' && node.children) {
+          traverse(node.children);
+        }
+      }
+    };
+    traverse(blocks);
+    return files;
+  };
+
+  const allFiles = useMemo(() => getAllFiles(codeBlocks), [codeBlocks]);
+
+  const handleFileSelection = (filename: string, selected: boolean) => {
+    const newSelection = new Set(selectedFiles);
+    if (selected) {
+      newSelection.add(filename);
+    } else {
+      newSelection.delete(filename);
+    }
+    setSelectedFiles(newSelection);
+    
+    // Get selected file objects and call callback
+    const selectedFileObjects = allFiles.filter(file => newSelection.has(file.filename || ''));
+    onFilesSelected?.(selectedFileObjects);
+  };
+
+  const selectAllFiles = () => {
+    const allFilenames = new Set(allFiles.map(f => f.filename || ''));
+    setSelectedFiles(allFilenames);
+    onFilesSelected?.(allFiles);
+  };
+
+  const clearSelection = () => {
+    setSelectedFiles(new Set());
+    onFilesSelected?.([]);
+  };
+
   const handleFileClick = (filename: string) => {
-        console.log('selectedFileContent', selectedFileContent)
+    console.log('selectedFileContent', selectedFileContent)
     setSelectedFile(filename);
   };
 
@@ -254,9 +300,33 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
           <div className="p-4 border-b border-border">
             <h3 className="text-sm font-semibold text-foreground/90 mb-2">Project Structure</h3>
             {codeBlocks.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {codeBlocks.length} code block{codeBlocks.length !== 1 ? 's' : ''} detected
-              </p>
+              <>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {codeBlocks.length} code block{codeBlocks.length !== 1 ? 's' : ''} detected
+                </p>
+                <div className="flex flex-col space-y-2">
+                  <div className="text-xs text-muted-foreground">Context Selection:</div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={selectAllFiles}
+                      className="px-2 py-1 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
+                    >
+                      Select All ({allFiles.length})
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="px-2 py-1 text-xs bg-destructive/20 text-destructive rounded hover:bg-destructive/30 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {selectedFiles.size > 0 && (
+                    <div className="text-xs text-ai-glow">
+                      {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected for context
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
                 <div className="flex justify-end p-2">
@@ -270,10 +340,15 @@ export function PreviewPane({ messages, activeView }: PreviewPaneProps) {
 
           <ScrollArea className="flex-1 p-2">
             <div className="space-y-1">
-              {/* {codeBlocks.map((node, index) => (
-                <FileTreeNode key={index} node={node} onFileClick={handleFileClick} />
-              ))} */}
-              <FileTree nodes={codeBlocks} onFileClick={handleFileClick} />
+              {codeBlocks.map((node, index) => (
+                <FileTreeNodeWithSelection
+                  key={node.filename + index}
+                  node={node}
+                  onFileClick={handleFileClick}
+                  selectedFiles={selectedFiles}
+                  onFileSelection={handleFileSelection}
+                />
+              ))}
             </div>
           </ScrollArea>
 

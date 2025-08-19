@@ -42,7 +42,7 @@ export function useOllama() {
     return `${codeGenPrompt}\n\nHere is the request: ${request}`;
   }
 
-  const sendMessage = async (message: string): Promise<string> => {
+  const sendMessage = async (message: string, context?: string): Promise<string> => {
     setIsLoading(true);
     setError(null);
 
@@ -54,7 +54,7 @@ export function useOllama() {
         },
         body: JSON.stringify({
           model: 'gpt-oss:20b', // Default model - can be configured
-          prompt: getPrompt(message),
+          prompt: getPrompt(message) + (context ? `\n\nContext (selected files):\n${context}` : ''),
           stream: false,
         }),
       });

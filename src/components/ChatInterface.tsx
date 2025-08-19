@@ -6,7 +6,7 @@ import { Send, Bot, User, Code, Eye } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { PreviewPane } from './PreviewPane';
 import { useOllama } from '@/hooks/useOllama';
-import { aiResponse } from '@/lib/types';
+import { CodeStructBlock, aiResponse } from '@/lib/types';
 
 
 interface Message {
@@ -20,13 +20,14 @@ export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m your local AI assistant powered by Ollama. I can help you write code, create components, and build applications. What would you like to create today?',
+      content: "Hello! I'm your local AI assistant powered by Ollama. I can help you write code, create components, and build applications. What would you like to create today?",
       role: 'assistant',
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
   const [activeView, setActiveView] = useState<'preview' | 'code'>('preview');
+  const [selectedFilesForContext, setSelectedFilesForContext] = useState<CodeStructBlock[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { sendMessage, isLoading } = useOllama();
@@ -54,7 +55,14 @@ export function ChatInterface() {
     setInput('');
 
     try {
-      //const response = await sendMessage(input);
+      // Build context from selected files
+      const context = selectedFilesForContext.length > 0 
+        ? selectedFilesForContext.map(file => 
+            `File: ${file.filename}\nLanguage: ${file.language}\nContent:\n${file.content || 'No content'}`
+          ).join('\n\n---\n\n')
+        : undefined;
+
+      //const response = await sendMessage(input, context);
       const response = aiResponse
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -164,7 +172,11 @@ export function ChatInterface() {
 
         {/* Content */}
         <div className="flex-1">
-          <PreviewPane messages={messages} activeView={activeView} />
+          <PreviewPane 
+            messages={messages} 
+            activeView={activeView} 
+            onFilesSelected={setSelectedFilesForContext}
+          />
         </div>
       </div>
     </div>
