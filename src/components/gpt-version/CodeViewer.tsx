@@ -1,25 +1,82 @@
-import React from "react";
+import React, { useState } from "react";
 import { Highlight, Language } from "prism-react-renderer";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Edit, Save, X } from "lucide-react";
 
 type CodeViewerProps = {
   code: string;
-  language: Language; // use Language type from prism-react-renderer
+  language: Language;
+  onSave?: (newCode: string) => void;
+  filename?: string;
 };
 
-export function CodeViewer({ code, language }: CodeViewerProps) {
+export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCode, setEditedCode] = useState(code);
+
+  const handleSave = () => {
+    onSave?.(editedCode);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditedCode(code);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="rounded-lg border border-border bg-background">
+        <div className="flex items-center justify-between p-2 border-b border-border">
+          <span className="text-xs text-muted-foreground">Editing: {filename}</span>
+          <div className="flex space-x-2">
+            <Button size="sm" onClick={handleSave} className="h-7">
+              <Save className="h-3 w-3 mr-1" />
+              Save
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCancel} className="h-7">
+              <X className="h-3 w-3 mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+        <Textarea
+          value={editedCode}
+          onChange={(e) => setEditedCode(e.target.value)}
+          className="min-h-[400px] border-0 rounded-none resize-none font-mono text-sm"
+          placeholder="Enter your code here..."
+        />
+      </div>
+    );
+  }
+
   return (
-    <Highlight code={code} language={language} >
-      {({ className, style, tokens, getLineProps, getTokenProps }) => (
-        <pre className={className + " rounded-lg p-4 text-sm overflow-x-auto"} style={style}>
-          {tokens.map((line, i) => (
-            <div key={i} {...getLineProps({ line, key: i })}>
-              {line.map((token, key) => (
-                <span key={key} {...getTokenProps({ token, key })} />
-              ))}
-            </div>
-          ))}
-        </pre>
+    <div className="relative rounded-lg overflow-hidden">
+      {onSave && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setIsEditing(true)}
+          className="absolute top-2 right-2 z-10 h-7"
+        >
+          <Edit className="h-3 w-3 mr-1" />
+          Edit
+        </Button>
       )}
-    </Highlight>
+      <Highlight code={code} language={language}>
+        {({ className, style, tokens, getLineProps, getTokenProps }) => (
+          <pre className={className + " rounded-lg p-4 text-sm overflow-x-auto"} style={style}>
+            {tokens.map((line, i) => (
+              <div key={i} {...getLineProps({ line, key: i })}>
+                {line.map((token, key) => (
+                  <span key={key} {...getTokenProps({ token, key })} />
+                ))}
+              </div>
+            ))}
+          </pre>
+        )}
+      </Highlight>
+    </div>
   );
 }

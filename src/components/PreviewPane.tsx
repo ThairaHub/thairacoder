@@ -6,8 +6,8 @@ import { CodeBlock, CodeStructBlock, TreeNode } from '@/lib/types';
 import { transformCodeBlocks } from '@/lib/code-structure-block';
 import { mergeCodeStructBlocks, getAllFilesFromBlocks } from '@/lib/code-structure-merge';
 import { FileTreeNodeWithSelection } from './gpt-version/FileTreeNodeWithSelection';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Language } from 'prism-react-renderer';
+import { CodeViewer } from './gpt-version/CodeViewer';
 import { LivePreview } from './gpt-version/LivePreview';
 import { downloadCodeAsZip } from '@/lib/code-to-zip';
 
@@ -388,31 +388,24 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                           </div>
                         </div>
 
-                        {/* Syntax highlighted code */}
+                        {/* Code viewer with edit capability */}
                         <div style={{ height: '600px', overflow: 'hidden' }}>
-                          <SyntaxHighlighter
-                            language={activeTabContent.language || 'text'}
-                            style={oneDark}
-                            showLineNumbers
-                            wrapLines
-                            lineProps={{
-                              style: {
-                                wordBreak: 'break-word',
-                                whiteSpace: 'pre-wrap',
-                              },
+                          <CodeViewer
+                            code={activeTabContent.content || ''}
+                            language={activeTabContent.language as Language || 'text'}
+                            filename={activeTab}
+                            onSave={(newCode) => {
+                              // Update the code block content
+                              const updatedBlocks = codeBlocks.map(block => 
+                                block.filename === activeTab 
+                                  ? { ...block, content: newCode }
+                                  : block
+                              );
+                              // Note: This would need to be properly handled in the parent component
+                              // For now, we'll just log the changes
+                              console.log('File saved:', activeTab, newCode);
                             }}
-                            customStyle={{
-                              height: '100%',
-                              maxHeight: '100%',
-                              margin: 0,
-                              background: 'transparent',
-                              overflow: 'auto',
-                              overflowWrap: 'break-word',
-                              whiteSpace: 'pre-wrap',
-                            }}
-                          >
-                            {activeTabContent.content || ''}
-                          </SyntaxHighlighter>
+                          />
                         </div>
                       </Card>
                     ) : (
