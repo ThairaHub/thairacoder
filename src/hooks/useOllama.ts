@@ -193,14 +193,19 @@ const sendGeminiMessage = async (
 
 
 
-  const checkOllamaStatus = async (): Promise<any> => {
+  const checkOllamaStatus = async (): Promise<{ models: any[] } | false> => {
     try {
       const response = await fetch('http://localhost:11434/api/tags');
       if (response.ok) {
-        return response.json();
+        const data = await response.json();
+        // Ensure models property exists and is an array
+        return {
+          models: Array.isArray(data.models) ? data.models : []
+        };
       }
+      return { models: [] };
     } catch {
-      return false;
+      return { models: [] };
     }
   };
 

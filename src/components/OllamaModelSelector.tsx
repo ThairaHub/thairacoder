@@ -36,10 +36,15 @@ export default function ModelSelector({
     const fetchModels = async () => {
       try {
         const data = await checkOllamaStatus()
-        setModels(data.models)
-
+        // Defensive programming: ensure data exists and has models array
+        if (data && Array.isArray(data.models)) {
+          setModels(data.models)
+        } else {
+          setModels([])
+        }
       } catch (err) {
         console.error("Error fetching Ollama models", err)
+        setModels([]) // Set empty array on error
       }
     }
 
