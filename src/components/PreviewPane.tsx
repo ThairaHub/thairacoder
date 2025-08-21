@@ -1,6 +1,6 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Check, Copy, FileText, Folder, FolderOpen } from 'lucide-react';
+import { Check, Copy, FileText, Folder, FolderOpen, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { CodeBlock, CodeStructBlock, TreeNode } from '@/lib/types';
 import { transformCodeBlocks } from '@/lib/code-structure-block';
@@ -119,10 +119,12 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
   const handleCopy = () => {
-    if (!selectedFileContent) return;
-    navigator.clipboard.writeText(selectedFileContent.content || '');
+    if (!activeTabContent) return;
+    navigator.clipboard.writeText(activeTabContent.content || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
   };
@@ -196,11 +198,11 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
     return null;
   }
 
-  // In your component
-  const selectedFileContent = useMemo(() => {
-    if (!selectedFile) return null;
-    return findFileByName(codeBlocks, selectedFile);
-  }, [selectedFile, codeBlocks]);
+  // Get active tab content
+  const activeTabContent = useMemo(() => {
+    if (!activeTab) return null;
+    return findFileByName(codeBlocks, activeTab);
+  }, [activeTab, codeBlocks]);
 
   const allFiles = useMemo(() => getAllFilesFromBlocks(codeBlocks), [codeBlocks]);
 
@@ -230,7 +232,26 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   };
 
   const handleFileClick = (filename: string) => {
+    // Add to tabs if not already open
+    if (!openTabs.includes(filename)) {
+      setOpenTabs(prev => [...prev, filename]);
+    }
+    // Set as active tab
+    setActiveTab(filename);
     setSelectedFile(filename);
+  };
+
+  const closeTab = (filename: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setOpenTabs(prev => prev.filter(tab => tab !== filename));
+    
+    // If closing active tab, switch to another tab or set to null
+    if (activeTab === filename) {
+      const remainingTabs = openTabs.filter(tab => tab !== filename);
+      const newActiveTab = remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1] : null;
+      setActiveTab(newActiveTab);
+      setSelectedFile(newActiveTab);
+    }
   };
 
   if (activeView === 'code') {
@@ -307,88 +328,107 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
           </div>
         </div>
 
-        {/* File Content Viewer */}
+        {/* File Content Viewer with Tabs */}
         <div className="flex-1 flex flex-col">
-          {selectedFile ? (
+          {openTabs.length > 0 ? (
             <>
-              <div className="p-4 border-b border-border">
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4 text-ai-glow" />
-                  <span className="text-sm font-semibold text-foreground/90">{selectedFile}</span>
-                  {selectedFileContent && (
-                    <span className="text-xs text-muted-foreground">({selectedFileContent.language})</span>
-                  )}
+              {/* Tab Bar */}
+              <div className="border-b border-border bg-background">
+                <div className="flex items-center overflow-x-auto scrollbar-hide">
+                  {openTabs.map((tabFile) => (
+                    <div
+                      key={tabFile}
+                      className={`flex items-center px-3 py-2 border-r border-border cursor-pointer min-w-0 flex-shrink-0 ${
+                        activeTab === tabFile 
+                          ? 'bg-message-bg text-foreground' 
+                          : 'bg-background hover:bg-message-bg/50 text-muted-foreground'
+                      }`}
+                      onClick={() => setActiveTab(tabFile)}
+                    >
+                      <FileText className="h-3 w-3 mr-2 flex-shrink-0" />
+                      <span className="text-xs truncate max-w-[120px]" title={tabFile}>
+                        {tabFile}
+                      </span>
+                      <button
+                        onClick={(e) => closeTab(tabFile, e)}
+                        className="ml-2 p-0.5 rounded hover:bg-background/50 flex-shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <ScrollArea className="flex-1 relative">
-                <div className="p-4">
-                  {selectedFileContent ? (
-                    <Card className="p-4 bg-message-bg border-border relative">
-                      {/* Copy button */}
-                      <button
-                        onClick={handleCopy}
-                        className="absolute top-2 left-2 p-1 rounded hover:bg-gray-200 flex items-center justify-center"
-                        title={copied ? 'Copied!' : 'Copy to clipboard'}
-                      >
-                        {copied ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4 text-gray-500" />
-                        )}
-                      </button>
 
-                      {/* Syntax highlighted code FULL LINE
-                      <SyntaxHighlighter
-                        language={selectedFileContent.language || 'text'}
-                        style={oneDark}
-                        showLineNumbers
-                        wrapLines
-                        customStyle={{ margin: 0, background: 'transparent' }}
-                      >
-                        {selectedFileContent.content || ''}
-                      </SyntaxHighlighter>*/}
-
-
-                      {/* Syntax highlighted code BREAKING LINE*/}
-                      <div style={{ height: '600px', overflow: 'hidden' }}>
-                        <SyntaxHighlighter
-                          language={selectedFileContent.language || 'text'}
-                          style={oneDark}
-                          showLineNumbers
-                          wrapLines
-                          lineProps={{
-                            style: {
-                              wordBreak: 'break-word',
-                              whiteSpace: 'pre-wrap',
-                            },
-                          }}
-                          customStyle={{
-                            height: '100%',              // take full height of parent
-                            maxHeight: '100%',           // prevent overflowing
-                            margin: 0,
-                            background: 'transparent',
-                            overflow: 'auto',            // make it scrollable
-                            overflowWrap: 'break-word',
-                            whiteSpace: 'pre-wrap',      // ensures long lines wrap
-                          }}
+              {/* Active Tab Content */}
+              {activeTab && (
+                <ScrollArea className="flex-1 relative">
+                  <div className="p-4">
+                    {activeTabContent ? (
+                      <Card className="p-4 bg-message-bg border-border relative">
+                        {/* Copy button */}
+                        <button
+                          onClick={handleCopy}
+                          className="absolute top-2 left-2 p-1 rounded hover:bg-gray-200 flex items-center justify-center z-10"
+                          title={copied ? 'Copied!' : 'Copy to clipboard'}
                         >
-                          {selectedFileContent.content || ''}
-                        </SyntaxHighlighter></div>
+                          {copied ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4 text-gray-500" />
+                          )}
+                        </button>
 
-                    </Card>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      No content found for {selectedFileContent?.filename || 'file'}
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+                        {/* File info */}
+                        <div className="mb-4 pt-8">
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-ai-glow" />
+                            <span className="text-sm font-semibold text-foreground/90">{activeTab}</span>
+                            <span className="text-xs text-muted-foreground">({activeTabContent.language})</span>
+                          </div>
+                        </div>
+
+                        {/* Syntax highlighted code */}
+                        <div style={{ height: '600px', overflow: 'hidden' }}>
+                          <SyntaxHighlighter
+                            language={activeTabContent.language || 'text'}
+                            style={oneDark}
+                            showLineNumbers
+                            wrapLines
+                            lineProps={{
+                              style: {
+                                wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
+                              },
+                            }}
+                            customStyle={{
+                              height: '100%',
+                              maxHeight: '100%',
+                              margin: 0,
+                              background: 'transparent',
+                              overflow: 'auto',
+                              overflowWrap: 'break-word',
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {activeTabContent.content || ''}
+                          </SyntaxHighlighter>
+                        </div>
+                      </Card>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                        No content found for {activeTab}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Select a file to view its content</p>
+                <p className="text-sm">Select a file to open it in a tab</p>
               </div>
             </div>
           )}
@@ -400,7 +440,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
 
       <div className="p-8">
         <LivePreview
-          entry={selectedFileContent?.filename || ''}
+          entry={activeTabContent?.filename || ''}
           modules={codeBlocks
             .filter(block => block.language === 'jsx' || block.language === 'tsx')
             .map(block => ({ filename: block.filename || '', content: block.content }))}
