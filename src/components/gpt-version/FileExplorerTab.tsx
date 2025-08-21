@@ -5,27 +5,23 @@ import { useState } from "react";
 import { FileTreeNode } from "./FileTreeNode";
 import { CodeViewer } from "./CodeViewer";
 import { X } from "lucide-react";
-import { parseCodeBlocks, parseFileStructure } from "../PreviewPane";
-
-type CodeBlock = {
-  language: string;
-  filename?: string;
-  content: string;
-};
+import { parseCodeBlocks } from "../PreviewPane";
+import { transformCodeBlocks } from "../../lib/code-structure-block";
+import { CodeStructBlock } from "../../lib/types";
 
 type FileExplorerProps = {
   aiResponse: string;
 };
 
 export default function FileExplorer({ aiResponse }: FileExplorerProps) {
-  const fileTree = parseFileStructure(aiResponse);
   const codeBlocks = parseCodeBlocks(aiResponse);
+  const codeStructBlocks = transformCodeBlocks(codeBlocks);
 
-  const [openFiles, setOpenFiles] = useState<CodeBlock[]>([]);
-  const [activeFile, setActiveFile] = useState<CodeBlock | null>(null);
+  const [openFiles, setOpenFiles] = useState<CodeStructBlock[]>([]);
+  const [activeFile, setActiveFile] = useState<CodeStructBlock | null>(null);
 
   const handleFileClick = (filename: string) => {
-    const block = codeBlocks.find((b) => b.filename === filename);
+    const block = codeStructBlocks.find((b) => b.filename === filename);
     if (!block) return;
 
     // Add file if not already open
@@ -50,7 +46,7 @@ export default function FileExplorer({ aiResponse }: FileExplorerProps) {
     <div className="grid grid-cols-12 h-screen border rounded-xl overflow-hidden shadow-lg">
       {/* File Tree */}
       <div className="col-span-3 bg-gray-50 border-r overflow-y-auto p-2">
-        {fileTree.map((node, idx) => (
+        {codeStructBlocks.map((node, idx) => (
           <FileTreeNode
             key={idx}
             node={node}
