@@ -41,7 +41,7 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
             </Button>
           </div>
         </div>
-        <div className="h-[400px]">
+        <div className="h-[500px]">
           <Editor
             value={editedCode}
             onChange={(value) => setEditedCode(value || '')}
@@ -73,19 +73,54 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
           Edit
         </Button>
       )}
-      <Highlight code={code} language={language}>
-        {({ className, style, tokens, getLineProps, getTokenProps }) => (
-          <pre className={className + " rounded-lg p-4 text-sm overflow-x-auto"} style={style}>
-            {tokens.map((line, i) => (
-              <div key={i} {...getLineProps({ line, key: i })}>
-                {line.map((token, key) => (
-                  <span key={key} {...getTokenProps({ token, key })} />
-                ))}
-              </div>
-            ))}
-          </pre>
-        )}
-      </Highlight>
+<div style={{ height: "500px", overflowY: "auto" }}>
+  <Highlight code={code} language={language}>
+    {({ className, style, tokens, getLineProps, getTokenProps }) => (
+      <pre
+        className={
+          className + " rounded-lg p-4 text-sm"
+        }
+        style={{
+          ...style,
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        {tokens.map((line, i) => (
+          <div
+            key={i}
+            {...getLineProps({ line, key: i })}
+            style={{ display: "flex" }}
+          >
+            {/* Line number */}
+            <span
+              style={{
+                display: "inline-block",
+                width: "2em",
+                userSelect: "none",
+                opacity: 0.5,
+                textAlign: "right",
+                marginRight: "1em",
+              }}
+            >
+              {i + 1}
+            </span>
+
+            {/* Line code */}
+            <span>
+              {line.map((token, key) => (
+                <span key={key} {...getTokenProps({ token, key })} />
+              ))}
+            </span>
+          </div>
+        ))}
+      </pre>
+    )}
+  </Highlight>
+</div>
+
+
+
     </div>
   );
 }
