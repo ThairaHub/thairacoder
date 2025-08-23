@@ -121,6 +121,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   const [copied, setCopied] = useState(false);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [codeBlocks, setCodeBlocks] = useState<CodeStructBlock[]>([]);
 
   const handleCopy = () => {
     if (!activeTabContent) return;
@@ -129,8 +130,8 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
     setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
   };
 
-  // Parse file structure and code blocks from all assistant messages
-  const { fileStructure, codeBlocks } = useMemo(() => {
+  // Parse file structure from all assistant messages and update code blocks state
+  const fileStructure = useMemo(() => {
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     let parsedStructure: TreeNode[] = [];
     let mergedCodeBlocks: CodeStructBlock[] = [];
@@ -147,6 +148,9 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
       // Merge new blocks with existing ones instead of replacing
       mergedCodeBlocks = mergeCodeStructBlocks(mergedCodeBlocks, transformedBlocks);
     }
+
+    // Update code blocks state when messages change
+    setCodeBlocks(mergedCodeBlocks);
 
     // Only use fallback if no structure was parsed at all
     if (parsedStructure.length === 0 && mergedCodeBlocks.length === 0) {
@@ -181,7 +185,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
       ];
     }
 
-    return { fileStructure: parsedStructure, codeBlocks: mergedCodeBlocks };
+    return parsedStructure;
   }, [messages]);
 
   // Recursive search to find file by filename
@@ -205,6 +209,22 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   }, [activeTab, codeBlocks]);
 
   const allFiles = useMemo(() => getAllFilesFromBlocks(codeBlocks), [codeBlocks]);
+
+  // Function to recursively update code blocks
+  const updateCodeBlock = (filename: string, newContent: string) => {
+    const updateCodeBlocks = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
+      return blocks.map(block => {
+        if (block.type === 'file' && block.filename === filename) {
+          return { ...block, content: newContent };
+        } else if (block.type === 'folder' && block.children) {
+          return { ...block, children: updateCodeBlocks(block.children) };
+        }
+        return block;
+      });
+    };
+    
+    setCodeBlocks(prevBlocks => updateCodeBlocks(prevBlocks));
+  };
 
   const handleFileSelection = (filename: string, selected: boolean) => {
     const newSelection = new Set(selectedFiles);
@@ -395,24 +415,9 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                             language={activeTabContent.language as Language || 'text'}
                             filename={activeTab}
                             onSave={(newCode) => {
-                              // Find and update the code block content recursively
-                              const updateCodeBlocks = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
-                                return blocks.map(block => {
-                                  if (block.type === 'file' && block.filename === activeTab) {
-                                    return { ...block, content: newCode };
-                                  } else if (block.type === 'folder' && block.children) {
-                                    return { ...block, children: updateCodeBlocks(block.children) };
-                                  }
-                                  return block;
-                                });
-                              };
-                              
-                              // This would ideally update the parent component's state
-                              // For now, we simulate the update by logging
-                              console.log('File saved:', activeTab, newCode);
-                              
-                              // In a real implementation, you'd want to lift this state up
-                              // or use a context/state management solution
+                              if (activeTab) {
+                                updateCodeBlock(activeTab, newCode);
+                              }
                             }}
                           />
                         </div>
