@@ -1,7 +1,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Check, Copy, FileText, Folder, FolderOpen, X } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Check, Copy, FileText, Folder, FolderOpen, X, ChevronDown } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { CodeBlock, CodeStructBlock, TreeNode } from '@/lib/types';
 import { transformCodeBlocks } from '@/lib/code-structure-block';
 import { mergeCodeStructBlocks, getAllFilesFromBlocks } from '@/lib/code-structure-merge';
@@ -10,6 +10,12 @@ import { Language } from 'prism-react-renderer';
 import { CodeViewer } from './gpt-version/CodeViewer';
 import { LivePreview } from './gpt-version/LivePreview';
 import { downloadCodeAsZip } from '@/lib/code-to-zip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Message {
   id: string;
@@ -108,6 +114,13 @@ export function parseCodeBlocks(text: string): CodeBlock[] {
   return codeBlocks;
 }
 
+interface CodeVersion {
+  id: string;
+  name: string;
+  codeBlocks: CodeStructBlock[];
+  timestamp: Date;
+}
+
 interface PreviewPaneProps {
   messages: Message[];
   activeView: 'preview' | 'code';
@@ -122,6 +135,8 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [codeBlocks, setCodeBlocks] = useState<CodeStructBlock[]>([]);
+  const [versions, setVersions] = useState<CodeVersion[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
 
   const handleCopy = () => {
     if (!activeTabContent) return;
@@ -130,13 +145,15 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
     setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
   };
 
-  // Parse file structure from all assistant messages and update code blocks state
+  // Parse file structure from all assistant messages and create versions
   const fileStructure = useMemo(() => {
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     let parsedStructure: TreeNode[] = [];
-    let mergedCodeBlocks: CodeStructBlock[] = [];
+    const newVersions: CodeVersion[] = [];
 
-    for (const message of assistantMessages) {
+    // Create versions for each assistant message that contains code
+    for (let i = 0; i < assistantMessages.length; i++) {
+      const message = assistantMessages[i];
       const structure = parseFileStructure(message.content);
       const blocks = parseCodeBlocks(message.content);
       const transformedBlocks = transformCodeBlocks(blocks);
@@ -145,15 +162,30 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
         parsedStructure = structure; // Use the latest structure found
       }
 
-      // Merge new blocks with existing ones instead of replacing
-      mergedCodeBlocks = mergeCodeStructBlocks(mergedCodeBlocks, transformedBlocks);
+      // Only create a version if there are code blocks
+      if (transformedBlocks.length > 0) {
+        const versionId = `v${i + 1}-${message.timestamp.getTime()}`;
+        newVersions.push({
+          id: versionId,
+          name: `Version ${i + 1}`,
+          codeBlocks: transformedBlocks,
+          timestamp: message.timestamp
+        });
+      }
     }
 
-    // Update code blocks state when messages change
-    setCodeBlocks(mergedCodeBlocks);
+    // Update versions state
+    setVersions(newVersions);
+
+    // Set active version to the latest one if not already set
+    if (newVersions.length > 0 && (!activeVersionId || !newVersions.find(v => v.id === activeVersionId))) {
+      const latestVersion = newVersions[newVersions.length - 1];
+      setActiveVersionId(latestVersion.id);
+      setCodeBlocks(latestVersion.codeBlocks);
+    }
 
     // Only use fallback if no structure was parsed at all
-    if (parsedStructure.length === 0 && mergedCodeBlocks.length === 0) {
+    if (parsedStructure.length === 0 && newVersions.length === 0) {
       parsedStructure = [
         {
           name: 'src',
@@ -165,7 +197,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
               type: 'folder',
               expanded: true,
               children: [
-                { name: 'ChatInterface.tsx', type: 'file', comment: `import { useEffect, useState } from 'react';\nimport TodoList from '../components/TodoList';\nimport { fetchTodos, createTodo } from '../utils/api';\nimport styles from '../styles/Home.module.css';\n\nexport default function Home() {\n  const [todos, setTodos] = useState([]);\n  const [title, setTitle] = useState('');\n\n  useEffect(() => {\n    loadTodos();\n  }, []);\n\n  const loadTodos = async () => {\n    const data = await fetchTodos();\n    setTodos(data);\n  };\n\n  const handleAdd = async (e: React.FormEvent) => {\n    e.preventDefault();\n    if (!title.trim()) return;\n    await createTodo({ title });\n    setTitle('');\n    loadTodos();\n  };\n\n  return (\n    <div className={styles.container}>\n      <h1>Todo List</h1>\n      <form onSubmit={handleAdd}>\n        <input\n          type=\"text\"\n          value={title}\n          onChange={(e) => setTitle(e.target.value)}\n          placeholder=\"New todo\"\n          className={styles.input}\n        />\n        <button type=\"submit\" className={styles.button}>Add</button>\n      </form>\n      <TodoList todos={todos} onDelete={loadTodos} />\n    </div>\n  );\n}` },
+                { name: 'ChatInterface.tsx', type: 'file', comment: `import { useEffect, useState } from 'react';\nimport TodoList from '../components/TodoList';\nimport { fetchTodos, createTodo } from '../utils/api';\nimport styles from '../styles/Home.module.css';\n\nexport default function Home() {\n  const [todos, setTodos] = useState([]);\n  const [title, setTitle] = useState('');\n\n  useEffect(() => {\n    loadTodos();\n  }, []);\n\n  const loadTodos = async () => {\n    const data = await fetchTodos();\n    setTodos(data);\n  };\n\n  const handleAdd = async (e: React.FormEvent) => {\n    e.preventDefault();\n    if (!title.trim()) return;\n    await createTodo({ title });\n    setTitle('');\n    loadTodos();\n  };\n\n  return (\n    <div className={styles.container}>\n      <h1>Todo List</h1>\n      <form onSubmit={handleAdd}>\n        <input\n          type=\"text\"\n          value={title}\n          onChange={(e) => setTitle(e.target.value)}\n          placeholder=\"New todo\"\n          className={styles.input}\n        />\n        <button type=\"submit\" className={styles.button}>Add</button>\n      </form>\n      <TODOList todos={todos} onDelete={loadTodos} />\n    </div>\n  );\n}` },
                 { name: 'ChatMessage.tsx', type: 'file' },
                 { name: 'PreviewPane.tsx', type: 'file' },
               ]
@@ -186,7 +218,27 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
     }
 
     return parsedStructure;
-  }, [messages]);
+  }, [messages, activeVersionId]);
+
+  // Effect to update code blocks when active version changes
+  useEffect(() => {
+    if (activeVersionId) {
+      const activeVersion = versions.find(v => v.id === activeVersionId);
+      if (activeVersion) {
+        setCodeBlocks(activeVersion.codeBlocks);
+        // Close tabs that don't exist in the new version
+        const allFileNames = getAllFilesFromBlocks(activeVersion.codeBlocks).map(f => f.filename || '');
+        setOpenTabs(prev => prev.filter(tab => allFileNames.includes(tab)));
+        if (activeTab && !allFileNames.includes(activeTab)) {
+          setActiveTab(null);
+        }
+      }
+    }
+  }, [activeVersionId, versions, activeTab]);
+
+  const handleVersionChange = (versionId: string) => {
+    setActiveVersionId(versionId);
+  };
 
   // Recursive search to find file by filename
   function findFileByName(nodes: CodeStructBlock[], filename: string): CodeStructBlock | null {
@@ -311,13 +363,44 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
               </>
             )}
           </div>
-          <div className="flex justify-end p-2">
+          <div className="flex flex-col space-y-2 p-2">
             <button
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               onClick={() => downloadCodeAsZip(allFiles)}
             >
               Download All Code
             </button>
+            
+            {versions.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 flex items-center justify-between">
+                    <span>
+                      {versions.find(v => v.id === activeVersionId)?.name || 'Select Version'}
+                    </span>
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48 bg-background border border-border">
+                  {versions.map((version) => (
+                    <DropdownMenuItem
+                      key={version.id}
+                      onClick={() => handleVersionChange(version.id)}
+                      className={`cursor-pointer hover:bg-secondary/80 ${
+                        activeVersionId === version.id ? 'bg-secondary text-secondary-foreground' : ''
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{version.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {version.timestamp.toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           <div style={{ height: '400px', overflow: 'auto' }}>
             <ScrollArea className="flex-1 p-2">
