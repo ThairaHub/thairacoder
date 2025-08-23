@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Highlight, Language } from "prism-react-renderer";
-import { Textarea } from "@/components/ui/textarea";
+import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Edit, Save, X } from "lucide-react";
 
@@ -41,12 +41,21 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
             </Button>
           </div>
         </div>
-        <Textarea
-          value={editedCode}
-          onChange={(e) => setEditedCode(e.target.value)}
-          className="min-h-[400px] border-0 rounded-none resize-none font-mono text-sm"
-          placeholder="Enter your code here..."
-        />
+        <div className="h-[400px]">
+          <Editor
+            value={editedCode}
+            onChange={(value) => setEditedCode(value || '')}
+            language={language}
+            theme="vs-dark"
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: 'on',
+              wordWrap: 'on',
+              automaticLayout: true,
+            }}
+          />
+        </div>
       </div>
     );
   }

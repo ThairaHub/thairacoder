@@ -395,15 +395,24 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                             language={activeTabContent.language as Language || 'text'}
                             filename={activeTab}
                             onSave={(newCode) => {
-                              // Update the code block content
-                              const updatedBlocks = codeBlocks.map(block => 
-                                block.filename === activeTab 
-                                  ? { ...block, content: newCode }
-                                  : block
-                              );
-                              // Note: This would need to be properly handled in the parent component
-                              // For now, we'll just log the changes
+                              // Find and update the code block content recursively
+                              const updateCodeBlocks = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
+                                return blocks.map(block => {
+                                  if (block.type === 'file' && block.filename === activeTab) {
+                                    return { ...block, content: newCode };
+                                  } else if (block.type === 'folder' && block.children) {
+                                    return { ...block, children: updateCodeBlocks(block.children) };
+                                  }
+                                  return block;
+                                });
+                              };
+                              
+                              // This would ideally update the parent component's state
+                              // For now, we simulate the update by logging
                               console.log('File saved:', activeTab, newCode);
+                              
+                              // In a real implementation, you'd want to lift this state up
+                              // or use a context/state management solution
                             }}
                           />
                         </div>
