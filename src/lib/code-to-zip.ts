@@ -10,28 +10,22 @@ function normalizeFilename(filename?: string) {
 export async function downloadCodeAsZip(blocks: CodeStructBlock[]) {
   const zip = new JSZip();
 
-  // Map normalized full filenames to blocks for quick lookup
-  const blockMap = new Map(blocks.map(b => [normalizeFilename(b.filename), b]));
-
   function addBlockToZip(block: CodeStructBlock, parentFolder: JSZip) {
     if (block.type === 'file' && block.filename) {
-      const pathParts = normalizeFilename(block.filename).split('/').filter(Boolean);
-      let currentFolder = parentFolder;
-      for (let i = 0; i < pathParts.length - 1; i++) {
-        currentFolder = currentFolder.folder(pathParts[i])!;
-      }
-      const fileName = pathParts[pathParts.length - 1] || 'file';
-      currentFolder.file(fileName, block.content || '');
+      const fileName = normalizeFilename(block.filename);
+      parentFolder.file(fileName, block.content || '');
     } else if (block.type === 'folder' && block.children) {
-      const folder = parentFolder.folder(normalizeFilename(block.filename || 'folder'))!;
+      const folderName = normalizeFilename(block.filename || 'folder');
+      const folder = parentFolder.folder(folderName)!;
+      
+      // Process each child block directly (they should already be CodeStructBlock objects)
       block.children.forEach((child) => {
-        // Determine the child filename safely
-        const childFilename = typeof child === 'string' ? child : child.filename;
-        if (!childFilename) return;
-
-        const childBlock = blockMap.get(normalizeFilename(childFilename));
-        if (childBlock) addBlockToZip(childBlock, folder);
-        else folder.file(normalizeFilename(childFilename), '');
+        if (typeof child === 'object' && child.filename) {
+          addBlockToZip(child, folder);
+        } else if (typeof child === 'string') {
+          // Fallback for string references - create empty file
+          folder.file(normalizeFilename(child), '');
+        }
       });
     }
   }
