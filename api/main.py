@@ -11,7 +11,7 @@ app = FastAPI()
 
 origins = [
 "http://localhost:3000",  # Your Next.js frontend origin
-"http://localhost:8080",
+"http://localhost:8080",  # Your Vite.js frontend origin
 ]
 
 app.add_middleware(
