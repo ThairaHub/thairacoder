@@ -21,7 +21,7 @@ export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm your local AI assistant powered by Ollama. I can help you write code, create components, and build applications. What would you like to create today?",
+      content: "Hello! I'm your local Coder Assistant. I will help you create your SaaS, I can write code, create components, and build applications. What would you like to create today?",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -109,13 +109,16 @@ export function ChatInterface() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
           <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Bot className="h-8 w-8 text-ai-glow" />
+            <div className="relative w-10 h-10">
+            <img
+              src='logo_TH.png'
+              className="w-15 h-15 object-contain rounded-md"
+              />
               <div className="absolute -top-1 -right-1 h-3 w-3 bg-ai-glow rounded-full animate-pulse" />
             </div>
             <div>
               <h1 className="text-lg font-semibold bg-gradient-to-r from-ai-glow to-ai-glow-soft bg-clip-text text-transparent">
-                Local AI Assistant
+                ThairaCoder
               </h1>
               <p className="text-sm text-muted-foreground">
                 Powered by {provider === 'ollama' ? 'Ollama' : 'Gemini'}

@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
+    --background: 240 11% 2%;
     --foreground: 0 0% 98%;
 
     --card: 240 10% 3.9%;
@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 262 83% 58%;
+    --primary: 210 9% 33%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 240 3.7% 15.9%;
@@ -36,8 +36,8 @@ All colors MUST be HSL.
     --input: 240 3.7% 15.9%;
     --ring: 262 83% 58%;
 
-    --ai-glow: 262 83% 58%;
-    --ai-glow-soft: 262 83% 70%;
+    --ai-glow: 0 0% 100%;
+    --ai-glow-soft: 260 13% 95%;
     --chat-bg: 240 6% 10%;
     --message-bg: 240 4% 16%;
     --preview-bg: 240 8% 6%;

@@ -19,22 +19,27 @@ export function ChatMessage({ message }: ChatMessageProps) {
     <div className={cn(
       "flex gap-3 p-4 rounded-lg transition-all duration-200",
       isUser 
-        ? "bg-primary/10 ml-8 border border-primary/20" 
+        ? "bg-primary/70 ml-8 border border-primary/20" 
         : "bg-message-bg mr-8 border border-border/50 hover:border-ai-glow/30"
     )}>
       <div className={cn(
-        "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
         isUser 
           ? "bg-primary text-primary-foreground" 
           : "bg-gradient-to-br from-ai-glow to-ai-glow-soft text-background shadow-glow"
       )}>
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        {isUser ? <User className="h-4 w-4" /> :             <div className="relative w-10 h-10">
+            <img
+              src='logo_TH.png'
+              className="w-15 h-15 object-contain rounded-md"
+              />
+            </div>}
       </div>
       
       <div className="flex-1 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground/90">
-            {isUser ? 'You' : 'AI Assistant'}
+            {isUser ? 'You' : 'ThairaCoder'}
           </span>
           <span className="text-xs text-muted-foreground">
             {message.timestamp.toLocaleTimeString()}

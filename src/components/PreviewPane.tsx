@@ -328,7 +328,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
 
   if (activeView === 'code') {
     return (
-      <div className="h-200 flex">
+    <div className="flex h-full bg-background">
         {/* File Tree */}
         <div className="w-80 border-r border-border flex flex-col">
           <div className="p-4 border-b border-border">
@@ -343,9 +343,9 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                   <div className="flex space-x-2">
                     <button
                       onClick={selectAllFiles}
-                      className="px-2 py-1 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
+                      className="px-2 py-1 text-xs bg-primary/20 text-white/80 rounded hover:bg-primary/30 transition-colors"
                     >
-                      Select All ({allFiles.length})
+                      Select All ({allFiles.length} Files)
                     </button>
                     <button
                       onClick={clearSelection}
@@ -465,7 +465,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
 
               {/* Active Tab Content */}
               {activeTab && (
-                <ScrollArea className="flex-1 relative">
+                <div className="flex-1 relative">
                   <div className="p-4">
                     {activeTabContent ? (
                       <Card className="p-4 bg-message-bg border-border relative">
@@ -492,7 +492,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                         </div>
 
                         {/* Code viewer with edit capability */}
-                        <div style={{ height: '600px', overflow: 'hidden' }}>
+                        <div style={{ overflow: 'hidden' }}>
                           <CodeViewer
                             code={activeTabContent.content || ''}
                             language={activeTabContent.language as Language || 'text'}
@@ -511,7 +511,7 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               )}
             </>
           ) : (
