@@ -17,37 +17,37 @@ export function ChatMessage({ message }: ChatMessageProps) {
   
   return (
     <div className={cn(
-      "flex gap-3 p-4 rounded-lg transition-all duration-200",
+      "flex gap-2 p-2 rounded-lg transition-all duration-200",
       isUser 
-        ? "bg-primary/70 ml-8 border border-primary/20" 
-        : "bg-message-bg mr-8 border border-border/50 hover:border-ai-glow/30"
+        ? "bg-primary/70 ml-4 border border-primary/20" 
+        : "bg-message-bg mr-4 border border-border/50 hover:border-ai-glow/30"
     )}>
       <div className={cn(
-        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
+        "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
         isUser 
           ? "bg-primary text-primary-foreground" 
           : "bg-gradient-to-br from-ai-glow to-ai-glow-soft text-background shadow-glow"
       )}>
-        {isUser ? <User className="h-4 w-4" /> :             <div className="relative w-10 h-10">
+        {isUser ? <User className="h-3 w-3" /> :             <div className="relative w-7 h-7">
             <img
               src='logo_TH.png'
-              className="w-15 h-15 object-contain rounded-md"
+              className="w-7 h-7 object-contain rounded-md"
               />
             </div>}
       </div>
       
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground/90">
+          <span className="text-xs font-medium text-foreground/90">
             {isUser ? 'You' : 'ThairaCoder'}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground">
             {message.timestamp.toLocaleTimeString()}
           </span>
         </div>
         
         <div className="prose prose-sm prose-invert max-w-none">
-          <pre className="whitespace-pre-wrap text-sm text-foreground/90 font-sans">
+          <pre className="whitespace-pre-wrap text-xs text-foreground/90 font-sans leading-relaxed">
             {message.content}
           </pre>
         </div>

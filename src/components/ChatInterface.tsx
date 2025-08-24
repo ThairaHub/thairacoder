@@ -8,6 +8,7 @@ import { PreviewPane } from './PreviewPane';
 import { useOllama } from '@/hooks/useOllama';
 import { CodeStructBlock, aiResponse } from '@/lib/types';
 import ModelSelector from './OllamaModelSelector';
+import { cn } from '@/lib/utils';
 
 
 interface Message {
@@ -109,20 +110,20 @@ export function ChatInterface() {
       {/* Chat Panel */}
       <div className="flex flex-col w-1/3 bg-chat-bg border-r border-border">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
-          <div className="flex items-center space-x-3">
-            <div className="relative w-10 h-10">
+        <div className="flex items-center justify-between p-2 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
+          <div className="flex items-center space-x-2">
+            <div className="relative w-8 h-8">
             <img
               src='logo_TH.png'
-              className="w-15 h-15 object-contain rounded-md"
+              className="w-8 h-8 object-contain rounded-md"
               />
-              <div className="absolute -top-1 -right-1 h-3 w-3 bg-ai-glow rounded-full animate-pulse" />
+              <div className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-ai-glow rounded-full animate-pulse" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold bg-gradient-to-r from-ai-glow to-ai-glow-soft bg-clip-text text-transparent">
+              <h1 className="text-sm font-semibold bg-gradient-to-r from-ai-glow to-ai-glow-soft bg-clip-text text-transparent">
                 ThairaCoder
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Powered by {provider === 'ollama' ? 'Ollama' : 'Gemini'}
               </p>
             </div>
@@ -130,19 +131,19 @@ export function ChatInterface() {
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 p-2">
+          <div className="space-y-2">
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
             {isLoading && (
-              <div className="flex items-center space-x-2 text-muted-foreground">
-                <div className="flex space-x-1">
-                  <div className="h-2 w-2 bg-ai-glow rounded-full animate-pulse" />
-                  <div className="h-2 w-2 bg-ai-glow rounded-full animate-pulse delay-100" />
-                  <div className="h-2 w-2 bg-ai-glow rounded-full animate-pulse delay-200" />
+              <div className="flex items-center space-x-1 text-muted-foreground">
+                <div className="flex space-x-0.5">
+                  <div className="h-1.5 w-1.5 bg-ai-glow rounded-full animate-pulse" />
+                  <div className="h-1.5 w-1.5 bg-ai-glow rounded-full animate-pulse delay-100" />
+                  <div className="h-1.5 w-1.5 bg-ai-glow rounded-full animate-pulse delay-200" />
                 </div>
-                <span className="text-sm">AI is thinking...</span>
+                <span className="text-xs">AI is thinking...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -150,8 +151,8 @@ export function ChatInterface() {
         </ScrollArea>
 
         {/* Provider Selection */}
-        <div className="px-4 py-2 border-t border-border">
-          <div className="flex space-x-1 bg-message-bg rounded-lg p-1">
+        <div className="px-2 py-1 border-t border-border">
+          <div className="flex space-x-1 bg-message-bg rounded-lg p-0.5">
             <Button
               variant={provider === 'ollama' ? 'default' : 'ghost'}
               size="sm"
@@ -175,7 +176,7 @@ export function ChatInterface() {
         )}
         
         { provider === 'gemini' && (
-          <div className="px-4 py-2">
+          <div className="px-2 py-1">
             <Input
               type="password"
               value={geminiApiKey}
@@ -184,27 +185,27 @@ export function ChatInterface() {
                 localStorage.setItem('geminiApiKey', e.target.value);
               }}
               placeholder="Enter Gemini API Key..."
-              className="w-full bg-background/50 border-border focus:border-ai-glow transition-colors text-sm"
+              className="w-full bg-background/50 border-border focus:border-ai-glow transition-colors text-xs h-8"
             />
           </div>
         )}
 
         {/* Input */}
-        <div className="p-4 border-t border-border bg-message-bg/50">
-          <form onSubmit={handleSubmit} className="flex space-x-2">
+        <div className="p-2 border-t border-border bg-message-bg/50">
+          <form onSubmit={handleSubmit} className="flex space-x-1">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask me to create something..."
-              className="flex-1 bg-background/50 border-border focus:border-ai-glow transition-colors"
+              className="flex-1 bg-background/50 border-border focus:border-ai-glow transition-colors text-xs h-8"
               disabled={isLoading}
             />
             <Button 
               type="submit" 
               disabled={!input.trim() || isLoading}
-              className="bg-gradient-to-r from-primary to-ai-glow hover:from-primary/80 hover:to-ai-glow/80 transition-all shadow-glow"
+              className="bg-gradient-to-r from-primary to-ai-glow hover:from-primary/80 hover:to-ai-glow/80 transition-all shadow-glow h-8 px-2"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-3 w-3" />
             </Button>
           </form>
         </div>
@@ -213,25 +214,25 @@ export function ChatInterface() {
       {/* Preview Panel */}
       <div className="flex flex-col w-full bg-preview-bg">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold">Output</h2>
-          <div className="flex bg-message-bg rounded-lg p-1">
+        <div className="flex items-center justify-between p-2 border-b border-border">
+          <h2 className="text-sm font-semibold">Output</h2>
+          <div className="flex bg-message-bg rounded-lg p-0.5">
             <Button
               variant={activeView === 'preview' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveView('preview')}
-              className={activeView === 'preview' ? 'bg-primary text-primary-foreground' : ''}
+              className={cn("text-xs h-7 px-2", activeView === 'preview' ? 'bg-primary text-primary-foreground' : '')}
             >
-              <Eye className="h-4 w-4 mr-2" />
+              <Eye className="h-3 w-3 mr-1" />
               Preview
             </Button>
             <Button
               variant={activeView === 'code' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveView('code')}
-              className={activeView === 'code' ? 'bg-primary text-primary-foreground' : ''}
+              className={cn("text-xs h-7 px-2", activeView === 'code' ? 'bg-primary text-primary-foreground' : '')}
             >
-              <Code className="h-4 w-4 mr-2" />
+              <Code className="h-3 w-3 mr-1" />
               Code
             </Button>
           </div>

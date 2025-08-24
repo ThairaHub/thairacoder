@@ -28,20 +28,20 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
   if (isEditing) {
     return (
       <div className="rounded-lg border border-border bg-background">
-        <div className="flex items-center justify-between p-2 border-b border-border">
-          <span className="text-xs text-muted-foreground">Editing: {filename}</span>
-          <div className="flex space-x-2">
-            <Button size="sm" onClick={handleSave} className="h-7">
-              <Save className="h-3 w-3 mr-1" />
+        <div className="flex items-center justify-between p-1 border-b border-border">
+          <span className="text-[10px] text-muted-foreground">Editing: {filename}</span>
+          <div className="flex space-x-1">
+            <Button size="sm" onClick={handleSave} className="h-6 px-2 text-[10px]">
+              <Save className="h-2.5 w-2.5 mr-0.5" />
               Save
             </Button>
-            <Button size="sm" variant="outline" onClick={handleCancel} className="h-7">
-              <X className="h-3 w-3 mr-1" />
+            <Button size="sm" variant="outline" onClick={handleCancel} className="h-6 px-2 text-[10px]">
+              <X className="h-2.5 w-2.5 mr-0.5" />
               Cancel
             </Button>
           </div>
         </div>
-        <div className="h-[500px]">
+        <div className="h-[400px]">
           <Editor
             value={editedCode}
             onChange={(value) => setEditedCode(value || '')}
@@ -49,7 +49,7 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
             theme="vs-dark"
             options={{
               minimap: { enabled: false },
-              fontSize: 14,
+              fontSize: 11,
               lineNumbers: 'on',
               wordWrap: 'on',
               automaticLayout: true,
@@ -67,18 +67,18 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
           size="sm"
           variant="outline"
           onClick={() => setIsEditing(true)}
-          className="absolute top-2 right-2 z-10 h-7"
+          className="absolute top-1 right-1 z-10 h-6 px-2 text-[10px]"
         >
-          <Edit className="h-3 w-3 mr-1" />
+          <Edit className="h-2.5 w-2.5 mr-0.5" />
           Edit
         </Button>
       )}
-<div style={{ height: "500px", overflowY: "auto" }}>
+<div style={{ height: "400px", overflowY: "auto" }}>
   <Highlight code={code} language={language}>
     {({ className, style, tokens, getLineProps, getTokenProps }) => (
       <pre
         className={
-          className + " rounded-lg p-4 text-sm"
+          className + " rounded-lg p-2 text-[10px]"
         }
         style={{
           ...style,

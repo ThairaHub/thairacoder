@@ -335,37 +335,37 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
             <h3 className="text-sm font-semibold text-foreground/90 mb-2">Project Structure</h3>
             {codeBlocks.length > 0 && (
               <>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-[10px] text-muted-foreground mb-2">
                   {codeBlocks.length} code block{codeBlocks.length !== 1 ? 's' : ''} detected
                 </p>
-                <div className="flex flex-col space-y-2">
-                  <div className="text-xs text-muted-foreground">Context Selection:</div>
-                  <div className="flex space-x-2">
+                <div className="flex flex-col space-y-1">
+                  <div className="text-[10px] text-muted-foreground">Context Selection:</div>
+                  <div className="flex space-x-1">
                     <button
                       onClick={selectAllFiles}
-                      className="px-2 py-1 text-xs bg-primary/20 text-white/80 rounded hover:bg-primary/30 transition-colors"
+                      className="px-1.5 py-0.5 text-[10px] bg-primary/20 text-white/80 rounded hover:bg-primary/30 transition-colors"
                     >
-                      Select All ({allFiles.length} Files)
+                      Select All ({allFiles.length})
                     </button>
                     <button
                       onClick={clearSelection}
-                      className="px-2 py-1 text-xs bg-destructive/20 text-destructive rounded hover:bg-destructive/30 transition-colors"
+                      className="px-1.5 py-0.5 text-[10px] bg-destructive/20 text-destructive rounded hover:bg-destructive/30 transition-colors"
                     >
                       Clear
                     </button>
                   </div>
                   {selectedFiles.size > 0 && (
-                    <div className="text-xs text-ai-glow">
-                      {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected for context
+                    <div className="text-[10px] text-ai-glow">
+                      {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
                     </div>
                   )}
                 </div>
               </>
             )}
           </div>
-          <div className="flex flex-col space-y-2 p-2">
+          <div className="flex flex-col space-y-1 p-2">
             <button
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
               onClick={() => downloadCodeAsZip(allFiles)}
             >
               Download All Code
@@ -374,14 +374,14 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
             {versions.length > 1 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 flex items-center justify-between">
-                    <span>
+                  <button className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 flex items-center justify-between">
+                    <span className="text-[10px]">
                       {versions.find(v => v.id === activeVersionId)?.name || 'Select Version'}
                     </span>
-                    <ChevronDown className="h-4 w-4 ml-2" />
+                    <ChevronDown className="h-3 w-3 ml-1" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-48 bg-background border border-border">
+                <DropdownMenuContent className="w-40 bg-background border border-border">
                   {versions.map((version) => (
                     <DropdownMenuItem
                       key={version.id}
@@ -391,8 +391,8 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                       }`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-medium">{version.name}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs font-medium">{version.name}</span>
+                        <span className="text-[10px] text-muted-foreground">
                           {version.timestamp.toLocaleTimeString()}
                         </span>
                       </div>
@@ -418,13 +418,13 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
             </ScrollArea>
           </div>
 
-          <div className="p-4 border-t border-border">
-            <Card className="p-3 bg-message-bg border-border">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-xs text-muted-foreground">Connected to Ollama</span>
+          <div className="p-2 border-t border-border">
+            <Card className="p-2 bg-message-bg border-border">
+              <div className="flex items-center space-x-1 mb-1">
+                <div className="h-1.5 w-1.5 bg-green-500 rounded-full" />
+                <span className="text-[10px] text-muted-foreground">Connected to Ollama</span>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-[10px] text-muted-foreground">
                 Ready to generate and preview code
               </div>
             </Card>
@@ -448,15 +448,15 @@ export function PreviewPane({ messages, activeView, onFilesSelected }: PreviewPa
                       }`}
                       onClick={() => setActiveTab(tabFile)}
                     >
-                      <FileText className="h-3 w-3 mr-2 flex-shrink-0" />
-                      <span className="text-xs truncate max-w-[120px]" title={tabFile}>
+                      <FileText className="h-3 w-3 mr-1 flex-shrink-0" />
+                      <span className="text-[10px] truncate max-w-[100px]" title={tabFile}>
                         {tabFile}
                       </span>
                       <button
                         onClick={(e) => closeTab(tabFile, e)}
-                        className="ml-2 p-0.5 rounded hover:bg-background/50 flex-shrink-0"
+                        className="ml-1 p-0.5 rounded hover:bg-background/50 flex-shrink-0"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-2.5 w-2.5" />
                       </button>
                     </div>
                   ))}
