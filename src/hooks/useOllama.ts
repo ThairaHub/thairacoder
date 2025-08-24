@@ -60,14 +60,15 @@ export function useOllama() {
   const sendMessage = async (
     message: string,
     context?: string,
-    onStreamUpdate?: (chunk: string) => void
+    onStreamUpdate?: (chunk: string) => void,
+    apiKey?: string
   ): Promise<string> => {
     setIsLoading(true);
     setError(null);
 
     try {
       if (provider === 'gemini') {
-        return await sendGeminiMessage(message, context, onStreamUpdate);
+        return await sendGeminiMessage(message, context, onStreamUpdate, apiKey);
       } else {
         return await sendOllamaMessage(message, context, onStreamUpdate);
       }
@@ -140,7 +141,8 @@ export function useOllama() {
 const sendGeminiMessage = async (
   message: string,
   context?: string,
-  onStreamUpdate?: (chunk: string) => void
+  onStreamUpdate?: (chunk: string) => void,
+  apiKey?: string
 ): Promise<string> => {
   const url = onStreamUpdate
     ? "http://localhost:8000/gemini/stream"
@@ -152,7 +154,7 @@ const sendGeminiMessage = async (
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, apiKey }),
   });
 
   if (!response.ok) throw new Error(`HTTP error! ${response.status}`);

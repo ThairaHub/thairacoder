@@ -22,8 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure Gemini
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+# Configure Gemini - initial configuration (optional if API key comes from request)
+if os.environ.get("GEMINI_API_KEY"):
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 @app.post("/gemini/generate")
 async def generate(request: Request):
@@ -33,6 +34,15 @@ async def generate(request: Request):
     body = await request.json()
     message = body.get("message", "")
     context = body.get("context", "")
+    api_key = body.get("apiKey")
+    
+    # Use provided API key or fallback to environment variable
+    if api_key:
+        genai.configure(api_key=api_key)
+    elif os.environ.get("GEMINI_API_KEY"):
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    else:
+        return JSONResponse({"error": "No API key provided"}, status_code=400)
 
     model = genai.GenerativeModel("gemini-1.5-flash")
     result = model.generate_content(
@@ -51,6 +61,15 @@ async def stream_generate(request: Request):
     body = await request.json()
     print(body)
     prompt = body.get("prompt", "")
+    api_key = body.get("apiKey")
+    
+    # Use provided API key or fallback to environment variable
+    if api_key:
+        genai.configure(api_key=api_key)
+    elif os.environ.get("GEMINI_API_KEY"):
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    else:
+        return JSONResponse({"error": "No API key provided"}, status_code=400)
 
     model = genai.GenerativeModel("gemini-1.5-flash")
 

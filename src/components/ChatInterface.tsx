@@ -29,6 +29,7 @@ export function ChatInterface() {
   const [input, setInput] = useState('');
   const [activeView, setActiveView] = useState<'preview' | 'code'>('code');
   const [selectedFilesForContext, setSelectedFilesForContext] = useState<CodeStructBlock[]>([]);
+  const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { sendMessage, isLoading, provider, setProvider, model, setModel } = useOllama();
@@ -74,13 +75,14 @@ export function ChatInterface() {
         : undefined;
 
       // Stream response and update message in real-time
+      const apiKey = provider === 'gemini' ? geminiApiKey : undefined;
       const response = await sendMessage(input, context, (chunk: string) => {
         setMessages(prev => prev.map(msg => 
           msg.id === assistantMessageId 
             ? { ...msg, content: msg.content + chunk }
             : msg
         ));
-      });
+      }, apiKey);
 
       // Final update to ensure complete response
       setMessages(prev => prev.map(msg => 
@@ -170,6 +172,21 @@ export function ChatInterface() {
         </div>
         { provider === 'ollama' && (
           <ModelSelector  model={model} setModel={setModel}/>
+        )}
+        
+        { provider === 'gemini' && (
+          <div className="px-4 py-2">
+            <Input
+              type="password"
+              value={geminiApiKey}
+              onChange={(e) => {
+                setGeminiApiKey(e.target.value);
+                localStorage.setItem('geminiApiKey', e.target.value);
+              }}
+              placeholder="Enter Gemini API Key..."
+              className="w-full bg-background/50 border-border focus:border-ai-glow transition-colors text-sm"
+            />
+          </div>
         )}
 
         {/* Input */}
