@@ -26,35 +26,101 @@ export function useOllama() {
   const [provider, setProvider] = useState<Provider>('ollama');
   const [model, setModel] = useState<string>('gemma3:4b')
 
-  const codeGenPrompt = `
-    You are a developer. You will only receive requests to generate pieces of code or project scaffolding. Always respond with **only code and file structures**—no explanations, no extra text.  
-
-    ### Formatting Rules:
-    1. Every code block must be enclosed in triple backticks followed by the correct **file name and extension**.  
-      - Example:  
-        \`\`\`tsx
-        // frontend/pages/index.tsx
-        export default function Home() { return <h1>Hello</h1> }
-        \`\`\`  
-    2. Directory structures must be shown inside a \`txt\` block with tree formatting.  
-      - Example:  
-        \`\`\`txt
-        app/
-        ├─ backend/
-        │  └─ main.py
-        └─ frontend/
-            └─ index.tsx
-        \`\`\`  
-    3. Do not include any prose, explanations, or instructions in the output—only the structured code and files.  
-    4. If multiple files are required, list the **directory structure first**, then provide each file in its own properly labeled code block.  
-    5. If the request implies configuration or environment files (\`.env\`, \`package.json\`, etc.), include them following the same rules.  
-    ` as const;
+  /**
+   * Analyzes the request to determine its type and scope
+   */
+  const analyzeRequest = (request: string, context?: string) => {
+    const lowerRequest = request.toLowerCase();
+    
+    // Determine request type
+    const isBugFix = /fix|bug|error|issue|problem|broken|not working/i.test(request);
+    const isRefactor = /refactor|improve|optimize|clean|reorganize/i.test(request);
+    const isFeature = /add|create|implement|new feature|build/i.test(request);
+    const isModification = /change|update|modify|edit|adjust/i.test(request);
+    
+    // Determine scope
+    const isSingleFile = /this file|current file|single file/i.test(request) || 
+                        (context && context.split('File:').length === 2);
+    const hasExistingStructure = !!context && context.length > 0;
+    
+    return {
+      type: isBugFix ? 'bugfix' : 
+            isRefactor ? 'refactor' : 
+            isFeature ? 'feature' : 
+            isModification ? 'modification' : 
+            'general',
+      isSingleFile,
+      hasExistingStructure
+    };
+  };
 
   /**
-   * Helper function to build the full AI prompt with the user’s request.
+   * Generates a context-aware prompt based on the request type and existing code
    */
-  const getPrompt = (request: string): string => {
-    return `${codeGenPrompt}\n\nHere is the request: ${request}`;
+  const getPrompt = (request: string, context?: string): string => {
+    const analysis = analyzeRequest(request, context);
+    
+    let basePrompt = `You are an expert developer. You will receive requests to generate, modify, or fix code. Always respond with **only code and file structures**—no explanations unless fixing bugs (then add brief inline comments for fixes).
+
+### Core Rules:
+1. Every code block must be enclosed in triple backticks with the **file name and extension**.
+2. Directory structures must be shown inside a \`txt\` block with tree formatting.
+3. Keep responses focused and minimal—only include what's necessary for the request.
+4. For multi-file projects, show directory structure first, then each file.`;
+
+    // Add context-specific instructions
+    if (analysis.hasExistingStructure) {
+      basePrompt += `\n\n### Existing Code Context:
+- You have access to existing code structure. Maintain consistency with current patterns.
+- Preserve file organization and naming conventions from the existing codebase.
+- When modifying files, show only the complete updated file content.`;
+    }
+
+    if (analysis.type === 'bugfix') {
+      basePrompt += `\n\n### Bug Fix Instructions:
+- Identify and fix the issue in the code.
+- Add brief inline comments (// FIX: ...) to explain what was fixed.
+- Ensure the fix doesn't break existing functionality.
+- If multiple files are affected, show all necessary changes.`;
+    } else if (analysis.type === 'refactor') {
+      basePrompt += `\n\n### Refactoring Instructions:
+- Improve code structure while maintaining functionality.
+- Follow best practices and design patterns.
+- Consider performance, readability, and maintainability.
+- Break down large files into smaller, focused components when appropriate.`;
+    } else if (analysis.type === 'feature') {
+      basePrompt += `\n\n### Feature Implementation:
+- Implement the requested feature completely.
+- Follow existing code patterns and conventions.
+- Include all necessary files (components, hooks, utilities, etc.).
+- Ensure proper integration with existing code.`;
+    } else if (analysis.type === 'modification') {
+      basePrompt += `\n\n### Modification Instructions:
+- Make the requested changes precisely.
+- Maintain backward compatibility when possible.
+- Show the complete updated file(s) with changes applied.`;
+    }
+
+    if (analysis.isSingleFile) {
+      basePrompt += `\n\n### Single File Focus:
+- This request is for a single file modification.
+- Provide the complete updated file content.
+- Maintain imports and exports properly.`;
+    } else {
+      basePrompt += `\n\n### Multi-File Project:
+- Show directory structure first if creating new files.
+- Organize files logically by feature/component.
+- Ensure proper imports between files.`;
+    }
+
+    // Add request and context
+    basePrompt += `\n\n### Request: ${request}`;
+    
+    if (context) {
+      basePrompt += `\n\n### Existing Code Context:\n${context}`;
+    }
+
+    return basePrompt;
   }
 
   const sendMessage = async (
@@ -93,7 +159,7 @@ export function useOllama() {
       },
       body: JSON.stringify({
         model: model,
-        prompt: getPrompt(message) + (context ? `\n\nContext (selected files):\n${context}` : ''),
+        prompt: getPrompt(message, context),
         stream: !!onStreamUpdate,
       }),
     });
@@ -149,7 +215,7 @@ const sendGeminiMessage = async (
     : "http://localhost:8000/gemini/generate";
 
   
-  const prompt = getPrompt(message) + (context ? `\n\nContext (selected files):\n${context}` : '') 
+  const prompt = getPrompt(message, context) 
 
   const response = await fetch(url, {
     method: "POST",
