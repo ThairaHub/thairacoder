@@ -242,7 +242,8 @@ export function ChatInterface() {
         <div className="flex-1">
           <PreviewPane 
             messages={messages} 
-            activeView={activeView} 
+            activeView={activeView}
+            provider={provider}
             onFilesSelected={setSelectedFilesForContext}
           />
         </div>
