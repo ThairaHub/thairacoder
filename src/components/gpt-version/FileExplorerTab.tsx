@@ -87,8 +87,10 @@ export default function FileExplorer({ aiResponse }: FileExplorerProps) {
         <div className="flex-1 overflow-y-auto p-4">
           {activeFile ? (
             <CodeViewer
+              key={activeFile.filename}
               code={activeFile.content}
               language={activeFile.language}
+              filename={activeFile.filename}
             />
           ) : (
             <div className="text-gray-400 flex items-center justify-center h-full">

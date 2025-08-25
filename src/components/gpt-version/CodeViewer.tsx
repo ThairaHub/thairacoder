@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Highlight, Language } from "prism-react-renderer";
 import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,17 @@ type CodeViewerProps = {
 export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedCode, setEditedCode] = useState(code);
+
+  // Sync internal state when external code prop changes (e.g., after save)
+  useEffect(() => {
+    setEditedCode(code);
+  }, [code]);
+
+  // Reset editor state when switching files/tabs
+  useEffect(() => {
+    setIsEditing(false);
+    setEditedCode(code);
+  }, [filename]);
 
   const handleSave = () => {
     onSave?.(editedCode);

@@ -496,6 +496,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                         {/* Code viewer with edit capability */}
                         <div style={{ overflow: 'hidden' }}>
                           <CodeViewer
+                            key={activeTab}
                             code={activeTabContent.content || ''}
                             language={activeTabContent.language as Language || 'text'}
                             filename={activeTab}
