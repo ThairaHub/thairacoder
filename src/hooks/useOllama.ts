@@ -66,7 +66,13 @@ export function useOllama() {
 1. Every code block must be enclosed in triple backticks and the **file name and extension** must be the first line inside triple backticks.
 2. Directory structures must be shown inside a \`txt\` block with tree formatting.
 3. Keep responses focused and minimal—only include what's necessary for the request.
-4. For multi-file projects, show directory structure first, then each file.`;
+4. For multi-file projects, show directory structure first, then each file.
+5. Nver generate one line with a file name, example:
+\`\`\`python
+main.py
+\`\`\`
+`;
+
 
     // Add context-specific instructions
     if (analysis.hasExistingStructure) {
