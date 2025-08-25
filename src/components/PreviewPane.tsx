@@ -277,7 +277,20 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
       });
     };
     
-    setCodeBlocks(prevBlocks => updateCodeBlocks(prevBlocks));
+    // Update the current codeBlocks
+    const updatedBlocks = updateCodeBlocks(codeBlocks);
+    setCodeBlocks(updatedBlocks);
+    
+    // Also update the version's codeBlocks to persist changes
+    if (activeVersionId) {
+      setVersions(prevVersions => 
+        prevVersions.map(version => 
+          version.id === activeVersionId 
+            ? { ...version, codeBlocks: updatedBlocks }
+            : version
+        )
+      );
+    }
   };
 
   const handleFileSelection = (filename: string, selected: boolean) => {
