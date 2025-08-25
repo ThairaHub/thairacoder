@@ -67,10 +67,32 @@ export function useOllama() {
 2. Directory structures must be shown inside a \`txt\` block with tree formatting.
 3. Keep responses focused and minimal—only include what's necessary for the request.
 4. For multi-file projects, show directory structure first, then each file.
-5. Nver generate one line with a file name, example:
+5. Never generate one line result with only a file name, examples:
+Wrong way:(
 \`\`\`python
 main.py
 \`\`\`
+
+\`\`\`javascript
+frontend/pages/index.js
+\`\`\`
+  )
+
+Right way: (
+\`\`\`javascript
+// frontend/pages/index.js
+import TodoList from '../components/TodoList';
+
+export default function Home() {
+  return (
+    <div>
+      <h1>Todo List</h1>
+      <TodoList />
+    </div>
+  );
+}
+\`\`\`
+  )
 `;
 
 
