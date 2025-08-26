@@ -349,8 +349,8 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     return (
     <div className="flex h-full bg-background">
         {/* File Tree */}
-        <div className="w-80 border-r border-border flex flex-col">
-          <div className="p-4 border-b border-border">
+        <div className="w-80 border-r border-border flex flex-col h-full">
+          <div className="p-4 border-b border-border flex-shrink-0">
             <h3 className="text-sm font-semibold text-foreground/90 mb-2">Project Structure</h3>
             {codeBlocks.length > 0 && (
               <>
@@ -382,7 +382,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               </>
             )}
           </div>
-          <div className="flex flex-col space-y-1 p-2">
+          <div className="flex flex-col space-y-1 p-2 flex-shrink-0">
             <button
               className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
               onClick={() => downloadCodeAsZip(allFiles)}
@@ -421,23 +421,21 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               </DropdownMenu>
             )}
           </div>
-          <div style={{ height: '400px', overflow: 'auto' }}>
-            <ScrollArea className="flex-1 p-2">
-              <div className="space-y-1">
-                {codeBlocks.map((node, index) => (
-                  <FileTreeNodeWithSelection
-                    key={node.filename + index}
-                    node={node}
-                    onFileClick={handleFileClick}
-                    selectedFiles={selectedFiles}
-                    onFileSelection={handleFileSelection}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
+          <ScrollArea className="flex-1 min-h-0 p-2">
+            <div className="space-y-1">
+              {codeBlocks.map((node, index) => (
+                <FileTreeNodeWithSelection
+                  key={node.filename + index}
+                  node={node}
+                  onFileClick={handleFileClick}
+                  selectedFiles={selectedFiles}
+                  onFileSelection={handleFileSelection}
+                />
+              ))}
+            </div>
+          </ScrollArea>
 
-          <div className="p-2 border-t border-border">
+          <div className="p-2 border-t border-border flex-shrink-0 mt-auto">
             <Card className="p-2 bg-message-bg border-border">
               <div className="flex items-center space-x-1 mb-1">
                 <div className="h-1.5 w-1.5 bg-green-500 rounded-full" />
