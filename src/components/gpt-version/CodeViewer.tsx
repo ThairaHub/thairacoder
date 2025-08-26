@@ -52,7 +52,7 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
             </Button>
           </div>
         </div>
-        <div className="h-[400px]">
+        <div className="h-[calc(100vh-16rem)] min-h-[200px] max-h-[800px]">
           <Editor
             value={editedCode}
             onChange={(value) => setEditedCode(value || '')}
@@ -84,7 +84,7 @@ export function CodeViewer({ code, language, onSave, filename }: CodeViewerProps
           Edit
         </Button>
       )}
-<div style={{ height: "400px", overflowY: "auto" }}>
+<div className="h-[calc(100vh-16rem)] min-h-[200px] max-h-[800px] overflow-y-auto">
   <Highlight code={code} language={language}>
     {({ className, style, tokens, getLineProps, getTokenProps }) => (
       <pre
