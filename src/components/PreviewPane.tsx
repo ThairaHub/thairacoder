@@ -152,6 +152,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     const assistantMessages = messages.filter(m => m.role === 'assistant');
     let parsedStructure: TreeNode[] = [];
     const newVersions: CodeVersion[] = [];
+    let accumulatedCodeBlocks: CodeStructBlock[] = [];
 
     // Create versions for each assistant message that contains code
     for (let i = 0; i < assistantMessages.length; i++) {
@@ -166,11 +167,14 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
 
       // Only create a version if there are code blocks
       if (transformedBlocks.length > 0) {
+        // Merge new blocks with accumulated blocks (preserving existing files, updating changed ones)
+        accumulatedCodeBlocks = mergeCodeStructBlocks(accumulatedCodeBlocks, transformedBlocks);
+        
         const versionId = `v${i + 1}-${message.timestamp.getTime()}`;
         newVersions.push({
           id: versionId,
           name: `Version ${i + 1}`,
-          codeBlocks: transformedBlocks,
+          codeBlocks: [...accumulatedCodeBlocks], // Create a copy to avoid reference issues
           timestamp: message.timestamp
         });
       }
