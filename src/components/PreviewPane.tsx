@@ -1,17 +1,15 @@
 "use client"
 
 import type React from "react"
-
+import { ContentViewer } from "./gpt-version/ContentViewer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card } from "@/components/ui/card"
-import { Check, Copy, FileText, X, ChevronDown } from "lucide-react"
+import { FileText, X, ChevronDown } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import type { CodeBlock, CodeStructBlock, TreeNode } from "@/lib/types"
 import { transformCodeBlocks } from "@/lib/code-structure-block"
 import { mergeCodeStructBlocks, getAllFilesFromBlocks } from "@/lib/code-structure-merge"
 import { FileTreeNodeWithSelection } from "./gpt-version/FileTreeNodeWithSelection"
-import type { Language } from "prism-react-renderer"
-import { CodeViewer } from "./gpt-version/CodeViewer"
 import { LivePreview } from "./gpt-version/LivePreview"
 import { downloadCodeAsZip } from "@/lib/code-to-zip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -481,21 +479,8 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                   <div className="p-4">
                     {activeTabContent ? (
                       <Card className="p-4 bg-message-bg border-border relative">
-                        {/* Copy button */}
-                        <button
-                          onClick={handleCopy}
-                          className="absolute top-2 left-2 p-1 rounded hover:bg-gray-200 flex items-center justify-center z-10"
-                          title={copied ? "Copied!" : "Copy to clipboard"}
-                        >
-                          {copied ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4 text-gray-500" />
-                          )}
-                        </button>
-
                         {/* File info */}
-                        <div className="mb-4 pt-8">
+                        <div className="mb-4">
                           <div className="flex items-center space-x-2">
                             <FileText className="h-4 w-4 text-ai-glow" />
                             <span className="text-sm font-semibold text-foreground/90">{activeTab}</span>
@@ -503,16 +488,24 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                           </div>
                         </div>
 
-                        {/* Code viewer with edit capability */}
                         <div style={{ overflow: "hidden" }}>
-                          <CodeViewer
+                          <ContentViewer
                             key={activeTab}
-                            code={activeTabContent.content || ""}
-                            language={(activeTabContent.language as Language) || "text"}
+                            content={activeTabContent.content || ""}
+                            platform={
+                              activeTabContent.language === "twitter"
+                                ? "X (Twitter)"
+                                : activeTabContent.language === "threads"
+                                  ? "Threads"
+                                  : activeTabContent.language === "linkedin"
+                                    ? "LinkedIn"
+                                    : undefined
+                            }
+                            contentType={activeTabContent.language}
                             filename={activeTab}
-                            onSave={(newCode) => {
+                            onSave={(newContent) => {
                               if (activeTab) {
-                                updateCodeBlock(activeTab, newCode)
+                                updateCodeBlock(activeTab, newContent)
                               }
                             }}
                           />
@@ -531,7 +524,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Select a file to open it in a tab</p>
+                <p className="text-sm">Select a content file to view it</p>
               </div>
             </div>
           )}
