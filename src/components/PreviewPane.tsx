@@ -95,6 +95,7 @@ export function parseContentBlocks(text: string): CodeBlock[] {
 
   // Look for platform-specific content sections
   const platformPatterns = [
+    { platform: "medium", regex: /\*\*Platform:\*\*\s*Medium([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
     { platform: "twitter", regex: /\*\*Platform:\*\*\s*X\s*$$Twitter$$([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
     { platform: "threads", regex: /\*\*Platform:\*\*\s*Threads([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
     { platform: "linkedin", regex: /\*\*Platform:\*\*\s*LinkedIn([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
@@ -229,6 +230,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               type: "folder",
               expanded: true,
               children: [
+                { name: "medium-content.md", type: "file" },
                 { name: "twitter-content.md", type: "file" },
                 { name: "threads-content.md", type: "file" },
                 { name: "linkedin-content.md", type: "file" },
@@ -575,6 +577,8 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                     platform={
                       block.language === "twitter"
                         ? "X (Twitter)"
+                        : block.language === "medium"
+                          ? "Medium"
                         : block.language === "threads"
                           ? "Threads"
                           : block.language === "linkedin"

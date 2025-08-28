@@ -81,7 +81,7 @@ export function useContentGeneration() {
   const getPrompt = (request: string, context?: string): string => {
     const analysis = analyzeRequest(request, context)
 
-    let basePrompt = `You are an expert social media content creator specializing in X (Twitter), Threads, and LinkedIn. Create engaging, high-quality content that follows platform best practices and drives engagement.
+    let basePrompt = `You are an expert social media content creator specializing in medium, X (Twitter), Threads, and LinkedIn. Create engaging, high-quality content that follows platform best practices and drives engagement.
 
 ### Content Creation Framework:
 
@@ -118,16 +118,23 @@ Create a storytelling about the requested topic following these rules:
 - Include relevant hashtags (2-3 maximum)
 - Use line breaks for readability
 - End with a call-to-action or question`
-    } else if (analysis.platform === "threads") {
+    } else if (analysis.platform === "medium") {
+      basePrompt += `\n\n**Medium Optimization:**
+- Blog long post style
+- Include industry insights and data
+- Use professional hashtags
+- Structure for entrepeneuer audience
+- Include actionable takeaways
+- Encourage community interaction`
+    }  else if (analysis.platform === "threads") {
       basePrompt += `\n\n**Threads Optimization:**
 - 500 character limit per post
 - Use visual storytelling techniques
 - Create engaging carousel-style content
 - Include relevant hashtags
 - Encourage community interaction`
-    } else if (analysis.platform === "linkedin") {
+  }   else if (analysis.platform === "linkedin") {
       basePrompt += `\n\n**LinkedIn Optimization:**
-- Professional tone and language
 - Include industry insights and data
 - Use professional hashtags
 - Structure for business audience
@@ -170,6 +177,10 @@ Create a storytelling about the requested topic following these rules:
 You MUST format your response using markdown code blocks for each platform. This is essential for the system to create separate content files.
 
 **Required Format:**
+\`\`\`medium medium-content.md
+[Your Medium content here - blog long post]
+\`\`\`
+
 \`\`\`twitter twitter-content.md
 [Your Twitter/X content here - formatted as thread if needed]
 \`\`\`
@@ -362,7 +373,7 @@ You MUST format your response using markdown code blocks for each platform. This
 
   const saveContent = async (contentData: ContentData): Promise<SavedContent> => {
     try {
-      const response = await fetch("http://localhost:8001/content/", {
+      const response = await fetch("http://localhost:8000/content/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -384,7 +395,7 @@ You MUST format your response using markdown code blocks for each platform. This
 
   const getAllContent = async (latestOnly = true): Promise<SavedContent[]> => {
     try {
-      const response = await fetch(`http://localhost:8001/content/?latest_only=${latestOnly}`)
+      const response = await fetch(`http://localhost:8000/content/?latest_only=${latestOnly}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch content: ${response.status}`)
@@ -400,7 +411,7 @@ You MUST format your response using markdown code blocks for each platform. This
 
   const getContentVersions = async (title: string, platform: string): Promise<SavedContent[]> => {
     try {
-      const response = await fetch(`http://localhost:8001/content/versions/${encodeURIComponent(title)}/${platform}`)
+      const response = await fetch(`http://localhost:8000/content/versions/${encodeURIComponent(title)}/${platform}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch content versions: ${response.status}`)

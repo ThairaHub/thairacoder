@@ -7,8 +7,8 @@ from typing import AsyncGenerator, List
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import get_db, Content
-from models import ContentCreate, ContentResponse, ContentUpdate
+from .database import get_db, Content
+from .models import ContentCreate, ContentResponse, ContentUpdate
 
 app = FastAPI()
 
