@@ -24,7 +24,9 @@ interface Message {
 }
 
 export function parseFileStructure(text: string): TreeNode[] {
-  const lines = text.split(/\r?\n/)
+  const filteredText = text.replace(/<(?:thinking|think)[\s\S]*?<\/(?:thinking|think)>/gi, "")
+
+  const lines = filteredText.split(/\r?\n/)
   const root: TreeNode[] = []
   const stack: { node: TreeNode; level: number }[] = []
 
