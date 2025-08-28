@@ -146,11 +146,30 @@ Create a storytelling about the requested topic following these rules:
 - Encourage interaction`
     }
 
-    basePrompt += `\n\n### Output Format:
-- Provide the complete content ready to post
-- Include relevant hashtags
-- Add engagement hooks
-- Format for the specified platform
+    basePrompt += `\n\n### CRITICAL OUTPUT FORMAT REQUIREMENTS:
+
+You MUST format your response using markdown code blocks for each platform. This is essential for the system to create separate content files.
+
+**Required Format:**
+\`\`\`twitter twitter-content.md
+[Your Twitter/X content here - formatted as thread if needed]
+\`\`\`
+
+\`\`\`linkedin linkedin-content.md
+[Your LinkedIn content here - professional format]
+\`\`\`
+
+\`\`\`threads threads-content.md
+[Your Threads content here - visual storytelling format]
+\`\`\`
+
+**Important Rules:**
+- Each platform must be in its own code block
+- Use the exact platform names: "twitter", "linkedin", "threads"
+- Include the .md filename as shown above
+- Put the complete, ready-to-post content inside each block
+- Create content for multiple platforms when appropriate
+- Follow the 8-section essay structure within each platform's constraints
 
 ### Request: ${request}`
 
