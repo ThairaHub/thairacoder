@@ -10,7 +10,6 @@ import type { CodeBlock, CodeStructBlock, TreeNode } from "@/lib/types"
 import { transformCodeBlocks } from "@/lib/code-structure-block"
 import { mergeCodeStructBlocks, getAllFilesFromBlocks } from "@/lib/code-structure-merge"
 import { FileTreeNodeWithSelection } from "./gpt-version/FileTreeNodeWithSelection"
-import { LivePreview } from "./gpt-version/LivePreview"
 import { downloadCodeAsZip } from "@/lib/code-to-zip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -91,27 +90,63 @@ export function parseFileStructure(text: string): TreeNode[] {
 }
 
 // Parse code blocks from markdown-style text
-export function parseCodeBlocks(text: string): CodeBlock[] {
-  const codeBlocks: CodeBlock[] = []
-  const codeBlockRegex = /```(\w+)?(?:\s+([^\n]+))?\n([\s\S]*?)```/g
+export function parseContentBlocks(text: string): CodeBlock[] {
+  const contentBlocks: CodeBlock[] = []
 
+  // Look for platform-specific content sections
+  const platformPatterns = [
+    { platform: "twitter", regex: /\*\*Platform:\*\*\s*X\s*$$Twitter$$([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
+    { platform: "threads", regex: /\*\*Platform:\*\*\s*Threads([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
+    { platform: "linkedin", regex: /\*\*Platform:\*\*\s*LinkedIn([\s\S]*?)(?=\*\*Platform:\*\*|$)/gi },
+  ]
+
+  // Also check for traditional code blocks for backward compatibility
+  const codeBlockRegex = /```(\w+)?(?:\s+([^\n]+))?\n([\s\S]*?)```/g
   let match
   while ((match = codeBlockRegex.exec(text)) !== null) {
     const [, language = "text", filename, content] = match
-    codeBlocks.push({
+    contentBlocks.push({
       language,
       filename: filename?.trim(),
       content: content.trim(),
     })
   }
 
-  return codeBlocks
+  // Parse platform-specific content
+  for (const { platform, regex } of platformPatterns) {
+    let platformMatch
+    while ((platformMatch = regex.exec(text)) !== null) {
+      const [, content] = platformMatch
+      const cleanContent = content.trim()
+
+      if (cleanContent) {
+        contentBlocks.push({
+          language: platform,
+          filename: `${platform}-content.md`,
+          content: `**Platform:** ${platform === "twitter" ? "X (Twitter)" : platform.charAt(0).toUpperCase() + platform.slice(1)}\n\n${cleanContent}`,
+        })
+      }
+    }
+  }
+
+  return contentBlocks
+}
+
+export function parseCodeBlocks(text: string): CodeBlock[] {
+  return parseContentBlocks(text)
 }
 
 interface CodeVersion {
   id: string
   name: string
   codeBlocks: CodeStructBlock[]
+  timestamp: Date
+}
+
+interface ContentVersion {
+  id: string
+  name: string
+  contentBlocks: CodeStructBlock[]
   timestamp: Date
 }
 
@@ -129,8 +164,8 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
   const [copied, setCopied] = useState(false)
   const [openTabs, setOpenTabs] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
-  const [codeBlocks, setCodeBlocks] = useState<CodeStructBlock[]>([])
-  const [versions, setVersions] = useState<CodeVersion[]>([])
+  const [contentBlocks, setContentBlocks] = useState<CodeStructBlock[]>([])
+  const [versions, setVersions] = useState<ContentVersion[]>([])
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null)
 
   const handleCopy = () => {
@@ -140,34 +175,33 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     setTimeout(() => setCopied(false), 2000) // Reset after 2 seconds
   }
 
-  // Parse file structure from all assistant messages and create versions
   const fileStructure = useMemo(() => {
     const assistantMessages = messages.filter((m) => m.role === "assistant")
     let parsedStructure: TreeNode[] = []
-    const newVersions: CodeVersion[] = []
-    let accumulatedCodeBlocks: CodeStructBlock[] = []
+    const newVersions: ContentVersion[] = []
+    let accumulatedContentBlocks: CodeStructBlock[] = []
 
-    // Create versions for each assistant message that contains code
+    // Create versions for each assistant message that contains content
     for (let i = 0; i < assistantMessages.length; i++) {
       const message = assistantMessages[i]
       const structure = parseFileStructure(message.content)
-      const blocks = parseCodeBlocks(message.content)
+      const blocks = parseContentBlocks(message.content)
       const transformedBlocks = transformCodeBlocks(blocks)
 
       if (structure.length > 0) {
         parsedStructure = structure // Use the latest structure found
       }
 
-      // Only create a version if there are code blocks
+      // Only create a version if there are content blocks
       if (transformedBlocks.length > 0) {
         // Merge new blocks with accumulated blocks (preserving existing files, updating changed ones)
-        accumulatedCodeBlocks = mergeCodeStructBlocks(accumulatedCodeBlocks, transformedBlocks)
+        accumulatedContentBlocks = mergeCodeStructBlocks(accumulatedContentBlocks, transformedBlocks)
 
         const versionId = `v${i + 1}-${message.timestamp.getTime()}`
         newVersions.push({
           id: versionId,
           name: `Version ${i + 1}`,
-          codeBlocks: [...accumulatedCodeBlocks], // Create a copy to avoid reference issues
+          contentBlocks: [...accumulatedContentBlocks], // Create a copy to avoid reference issues
           timestamp: message.timestamp,
         })
       }
@@ -180,39 +214,26 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     if (newVersions.length > 0 && (!activeVersionId || !newVersions.find((v) => v.id === activeVersionId))) {
       const latestVersion = newVersions[newVersions.length - 1]
       setActiveVersionId(latestVersion.id)
-      setCodeBlocks(latestVersion.codeBlocks)
+      setContentBlocks(latestVersion.contentBlocks)
     }
 
-    // Only use fallback if no structure was parsed at all
     if (parsedStructure.length === 0 && newVersions.length === 0) {
       parsedStructure = [
         {
-          name: "src",
+          name: "content",
           type: "folder",
           expanded: true,
           children: [
             {
-              name: "components",
+              name: "social-media",
               type: "folder",
               expanded: true,
               children: [
-                {
-                  name: "ChatInterface.tsx",
-                  type: "file",
-                  comment: `import { useEffect, useState } from 'react';\nimport TodoList from '../components/TodoList';\nimport { fetchTodos, createTodo } from '../utils/api';\nimport styles from '../styles/Home.module.css';\n\nexport default function Home() {\n  const [todos, setTodos] = useState([]);\n  const [title, setTitle] = useState('');\n\n  useEffect(() => {\n    loadTodos();\n  }, []);\n\n  const loadTodos = async () => {\n    const data = await fetchTodos();\n    setTodos(data);\n  };\n\n  const handleAdd = async (e: React.FormEvent) => {\n    e.preventDefault();\n    if (!title.trim()) return;\n    await createTodo({ title });\n    setTitle('');\n    loadTodos();\n  };\n\n  return (\n    <div className={styles.container}>\n      <h1>Todo List</h1>\n      <form onSubmit={handleAdd}>\n        <input\n          type=\"text\"\n          value={title}\n          onChange={(e) => setTitle(e.target.value)}\n          placeholder=\"New todo\"\n          className={styles.input}\n        />\n        <button type=\"submit\" className={styles.button}>Add</button>\n      </form>\n      <TODOList todos={todos} onDelete={loadTodos} />\n    </div>\n  );\n}`,
-                },
-                { name: "ChatMessage.tsx", type: "file" },
-                { name: "PreviewPane.tsx", type: "file" },
+                { name: "twitter-content.md", type: "file" },
+                { name: "threads-content.md", type: "file" },
+                { name: "linkedin-content.md", type: "file" },
               ],
             },
-            {
-              name: "hooks",
-              type: "folder",
-              expanded: false,
-              children: [{ name: "useOllama.ts", type: "file" }],
-            },
-            { name: "App.tsx", type: "file" },
-            { name: "index.css", type: "file" },
           ],
         },
       ]
@@ -221,14 +242,14 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     return parsedStructure
   }, [messages, activeVersionId])
 
-  // Effect to update code blocks when active version changes
+  // Effect to update content blocks when active version changes
   useEffect(() => {
     if (activeVersionId) {
       const activeVersion = versions.find((v) => v.id === activeVersionId)
       if (activeVersion) {
-        setCodeBlocks(activeVersion.codeBlocks)
+        setContentBlocks(activeVersion.contentBlocks)
         // Close tabs that don't exist in the new version
-        const allFileNames = getAllFilesFromBlocks(activeVersion.codeBlocks).map((f) => f.filename || "")
+        const allFileNames = getAllFilesFromBlocks(activeVersion.contentBlocks).map((f) => f.filename || "")
         setOpenTabs((prev) => prev.filter((tab) => allFileNames.includes(tab)))
         if (activeTab && !allFileNames.includes(activeTab)) {
           setActiveTab(null)
@@ -258,33 +279,33 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
   // Get active tab content
   const activeTabContent = useMemo(() => {
     if (!activeTab) return null
-    return findFileByName(codeBlocks, activeTab)
-  }, [activeTab, codeBlocks])
+    return findFileByName(contentBlocks, activeTab)
+  }, [activeTab, contentBlocks])
 
-  const allFiles = useMemo(() => getAllFilesFromBlocks(codeBlocks), [codeBlocks])
+  const allFiles = useMemo(() => getAllFilesFromBlocks(contentBlocks), [contentBlocks])
 
-  // Function to recursively update code blocks
-  const updateCodeBlock = (filename: string, newContent: string) => {
-    const updateCodeBlocks = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
+  // Function to recursively update content blocks
+  const updateContentBlock = (filename: string, newContent: string) => {
+    const updateContentBlocks = (blocks: CodeStructBlock[]): CodeStructBlock[] => {
       return blocks.map((block) => {
         if (block.type === "file" && block.filename === filename) {
           return { ...block, content: newContent }
         } else if (block.type === "folder" && block.children) {
-          return { ...block, children: updateCodeBlocks(block.children) }
+          return { ...block, children: updateContentBlocks(block.children) }
         }
         return block
       })
     }
 
-    // Update the current codeBlocks
-    const updatedBlocks = updateCodeBlocks(codeBlocks)
-    setCodeBlocks(updatedBlocks)
+    // Update the current contentBlocks
+    const updatedBlocks = updateContentBlocks(contentBlocks)
+    setContentBlocks(updatedBlocks)
 
-    // Also update the version's codeBlocks to persist changes
+    // Also update the version's contentBlocks to persist changes
     if (activeVersionId) {
       setVersions((prevVersions) =>
         prevVersions.map((version) =>
-          version.id === activeVersionId ? { ...version, codeBlocks: updatedBlocks } : version,
+          version.id === activeVersionId ? { ...version, contentBlocks: updatedBlocks } : version,
         ),
       )
     }
@@ -344,14 +365,14 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
         {/* File Tree */}
         <div className="w-80 border-r border-border flex flex-col h-full">
           <div className="p-4 border-b border-border flex-shrink-0">
-            <h3 className="text-sm font-semibold text-foreground/90 mb-2">Project Structure</h3>
-            {codeBlocks.length > 0 && (
+            <h3 className="text-sm font-semibold text-foreground/90 mb-2">Content Structure</h3>
+            {contentBlocks.length > 0 && (
               <>
                 <p className="text-[10px] text-muted-foreground mb-2">
-                  {codeBlocks.length} code block{codeBlocks.length !== 1 ? "s" : ""} detected
+                  {contentBlocks.length} content block{contentBlocks.length !== 1 ? "s" : ""} detected
                 </p>
                 <div className="flex flex-col space-y-1">
-                  <div className="text-[10px] text-muted-foreground">Context Selection:</div>
+                  <div className="text-[10px] text-muted-foreground">Content Selection:</div>
                   <div className="flex space-x-1">
                     <button
                       onClick={selectAllFiles}
@@ -380,7 +401,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
               onClick={() => downloadCodeAsZip(allFiles)}
             >
-              Download All Code
+              Download All Content
             </button>
 
             {versions.length > 1 && (
@@ -416,7 +437,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
           </div>
           <ScrollArea className="flex-1 min-h-0 p-2">
             <div className="space-y-1">
-              {codeBlocks.map((node, index) => (
+              {contentBlocks.map((node, index) => (
                 <FileTreeNodeWithSelection
                   key={node.filename + index}
                   node={node}
@@ -436,7 +457,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                   Connected to {provider === "ollama" ? "Ollama" : "Gemini"}
                 </span>
               </div>
-              <div className="text-[10px] text-muted-foreground">Ready to generate and preview code</div>
+              <div className="text-[10px] text-muted-foreground">Ready to generate and preview content</div>
             </Card>
           </div>
         </div>
@@ -505,7 +526,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                             filename={activeTab}
                             onSave={(newContent) => {
                               if (activeTab) {
-                                updateCodeBlock(activeTab, newContent)
+                                updateContentBlock(activeTab, newContent)
                               }
                             }}
                           />
@@ -536,31 +557,43 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
       <div className="p-4 h-full">
         <div className="mb-4">
           <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
-          <p className="text-sm text-muted-foreground mb-4">Preview of React/JSX components from your generated code</p>
+          <p className="text-sm text-muted-foreground mb-4">Preview of your generated social media content</p>
         </div>
 
-        {codeBlocks.length > 0 ? (
+        {contentBlocks.length > 0 ? (
           <div className="h-[calc(100%-120px)] border rounded-lg overflow-hidden">
-            <LivePreview
-              entry={
-                activeTabContent?.filename ||
-                codeBlocks.find((b) => b.language === "jsx" || b.language === "tsx")?.filename ||
-                ""
-              }
-              modules={codeBlocks
-                .filter((block) => block.language === "jsx" || block.language === "tsx")
-                .map((block) => ({
-                  filename: block.filename || `component-${Date.now()}.tsx`,
-                  content: block.content || "",
-                }))}
-            />
+            <ScrollArea className="h-full p-4">
+              {contentBlocks.map((block, index) => (
+                <Card key={index} className="mb-4 p-4 bg-message-bg border-border">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <FileText className="h-4 w-4 text-ai-glow" />
+                    <span className="text-sm font-semibold">{block.filename}</span>
+                    <span className="text-xs text-muted-foreground">({block.language})</span>
+                  </div>
+                  <ContentViewer
+                    content={block.content || ""}
+                    platform={
+                      block.language === "twitter"
+                        ? "X (Twitter)"
+                        : block.language === "threads"
+                          ? "Threads"
+                          : block.language === "linkedin"
+                            ? "LinkedIn"
+                            : undefined
+                    }
+                    contentType={block.language}
+                    filename={block.filename}
+                  />
+                </Card>
+              ))}
+            </ScrollArea>
           </div>
         ) : (
           <div className="flex items-center justify-center h-64 border rounded-lg bg-muted/20">
             <div className="text-center text-muted-foreground">
               <div className="text-4xl mb-2">📝</div>
-              <p>No React components found</p>
-              <p className="text-xs mt-1">Generate some JSX/TSX code to see a live preview</p>
+              <p>No content found</p>
+              <p className="text-xs mt-1">Generate some social media content to see a preview</p>
             </div>
           </div>
         )}
