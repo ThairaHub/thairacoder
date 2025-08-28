@@ -285,4 +285,3 @@ export const deleteTodo = async (id: string) => {
 BACKEND_PORT=8000
 \`\`\`
 `;
-

@@ -31,16 +31,16 @@ The **Code Structure Block System** is the core architecture that manages file s
 ### Core Types
 
 #### CodeBlock
-```typescript
+\`\`\`typescript
 export interface CodeBlock {
   language: string;      // Programming language (e.g., 'tsx', 'css', 'js')
   filename?: string;     // Optional filename with path
   content: string;       // Actual code content
 }
-```
+\`\`\`
 
 #### CodeStructBlock
-```typescript
+\`\`\`typescript
 export interface CodeStructBlock {
   type: 'file' | 'folder';    // Block type
   language: string;           // Language for syntax highlighting
@@ -48,7 +48,7 @@ export interface CodeStructBlock {
   content?: string;           // Code content (for files only)
   children?: CodeStructBlock[]; // Child blocks (for folders only)
 }
-```
+\`\`\`
 
 ### Key Modules
 
@@ -69,7 +69,7 @@ export interface CodeStructBlock {
 4. Return top-level structure
 
 **Example**:
-```typescript
+\`\`\`typescript
 // Input CodeBlocks
 [
   { language: 'tsx', filename: 'src/components/App.tsx', content: '...' },
@@ -99,7 +99,7 @@ export interface CodeStructBlock {
     ]
   }
 ]
-```
+\`\`\`
 
 #### 2. Code Structure Merging (`src/lib/code-structure-merge.ts`)
 
@@ -117,7 +117,7 @@ export interface CodeStructBlock {
   - Used for operations like file selection and ZIP downloads
 
 **Merging Strategy**:
-```typescript
+\`\`\`typescript
 // Existing structure:
 [{ type: 'folder', filename: 'src', children: [existing files] }]
 
@@ -126,7 +126,7 @@ export interface CodeStructBlock {
 
 // Result: Merged children in 'src' folder
 [{ type: 'folder', filename: 'src', children: [existing + new files] }]
-```
+\`\`\`
 
 #### 3. Code-to-ZIP Export (`src/lib/code-to-zip.ts`)
 
@@ -165,17 +165,17 @@ The PreviewPane component (`src/components/PreviewPane.tsx`) serves as the main 
 #### Chat Integration
 The ChatInterface (`src/components/ChatInterface.tsx`) uses selected files as context:
 
-```typescript
+\`\`\`typescript
 // Selected files are passed as context to AI
 const context = selectedFiles.map(file => 
   `// File: ${file.filename}\n${file.content}`
 ).join('\n\n');
-```
+\`\`\`
 
 ## Architecture
 
 ### Component Hierarchy
-```
+\`\`\`
 App
 ├── Index (main page)
 ├── ChatInterface
@@ -185,7 +185,7 @@ App
     ├── FileTreeNodeWithSelection
     ├── CodeViewer (syntax highlighting)
     └── LivePreview (React component rendering)
-```
+\`\`\`
 
 ### Data Flow
 1. **User Input** → ChatInterface
@@ -240,33 +240,33 @@ App
 ## Setup and Installation
 
 1. **Clone the repository**
-```bash
+\`\`\`bash
 git clone <repository-url>
 cd ai-code-assistant
-```
+\`\`\`
 
 2. **Install dependencies**
-```bash
+\`\`\`bash
 npm install
-```
+\`\`\`
 
 3. **Setup Ollama (optional, for local AI)**
-```bash
+\`\`\`bash
 # Install Ollama
 curl -fsSL https://ollama.ai/install.sh | sh
 
 # Pull required models
 ollama pull deepseek-r1:8b
 ollama pull gemma2:2b
-```
+\`\`\`
 
 4. **Configure API Keys (optional, for Gemini)**
 - Add Gemini API key when prompted in the application
 
 5. **Start development server**
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 
 ## Usage Guide
 
@@ -299,14 +299,14 @@ npm run dev
 ### Advanced Features
 
 #### Custom Context Prompts
-```typescript
+\`\`\`typescript
 // Example: Using file context in prompts
 const prompt = `
 Based on the existing ${selectedFiles.length} files, 
 please add a new authentication component that integrates 
 with our current structure.
 `;
-```
+\`\`\`
 
 #### Component Live Editing
 - Generated React components render immediately
@@ -316,14 +316,14 @@ with our current structure.
 ## Code Structure Block System - Advanced Usage
 
 ### Custom Transformations
-```typescript
+\`\`\`typescript
 // Custom block transformation
 const customBlocks = transformCodeBlocks(codeBlocks);
 const mergedBlocks = mergeCodeStructBlocks(existingBlocks, customBlocks);
-```
+\`\`\`
 
 ### File Operations
-```typescript
+\`\`\`typescript
 // Get all files recursively
 const allFiles = getAllFilesFromBlocks(codeStructBlocks);
 
@@ -332,7 +332,7 @@ const targetFile = findFileByName(codeStructBlocks, 'App.tsx');
 
 // Export to ZIP
 downloadCodeAsZip(codeStructBlocks);
-```
+\`\`\`
 
 This system provides a robust foundation for managing AI-generated code structures, enabling complex file hierarchies, incremental updates, and seamless integration with modern React development workflows.
 
