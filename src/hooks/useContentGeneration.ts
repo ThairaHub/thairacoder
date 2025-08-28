@@ -18,6 +18,25 @@ interface GeminiResponse {
   }>
 }
 
+interface ContentData {
+  title: string
+  platform: string
+  content_type: string
+  content_text: string
+}
+
+interface SavedContent {
+  id: number
+  title: string
+  platform: string
+  content_type: string
+  content_text: string
+  version: number
+  is_latest: boolean
+  created_at: string
+  updated_at: string
+}
+
 type Provider = "ollama" | "gemini"
 
 export function useContentGeneration() {
@@ -185,16 +204,29 @@ You MUST format your response using markdown code blocks for each platform. This
     context?: string,
     onStreamUpdate?: (chunk: string) => void,
     apiKey?: string,
+    autoSave = true,
   ): Promise<string> => {
     setIsLoading(true)
     setError(null)
 
     try {
+      let response: string
       if (provider === "gemini") {
-        return await sendGeminiMessage(message, context, onStreamUpdate, apiKey)
+        response = await sendGeminiMessage(message, context, onStreamUpdate, apiKey)
       } else {
-        return await sendOllamaMessage(message, context, onStreamUpdate)
+        response = await sendOllamaMessage(message, context, onStreamUpdate)
       }
+
+      if (autoSave && response) {
+        try {
+          await parseAndSaveContent(response, message)
+        } catch (saveError) {
+          console.error("Failed to save content to database:", saveError)
+          // Don't throw here, just log the error so content generation still works
+        }
+      }
+
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred"
       setError(errorMessage)
@@ -328,6 +360,90 @@ You MUST format your response using markdown code blocks for each platform. This
     }
   }
 
+  const saveContent = async (contentData: ContentData): Promise<SavedContent> => {
+    try {
+      const response = await fetch("http://localhost:8001/content/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contentData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to save content: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to save content"
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    }
+  }
+
+  const getAllContent = async (latestOnly = true): Promise<SavedContent[]> => {
+    try {
+      const response = await fetch(`http://localhost:8001/content/?latest_only=${latestOnly}`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch content: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch content"
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    }
+  }
+
+  const getContentVersions = async (title: string, platform: string): Promise<SavedContent[]> => {
+    try {
+      const response = await fetch(`http://localhost:8001/content/versions/${encodeURIComponent(title)}/${platform}`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch content versions: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch content versions"
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    }
+  }
+
+  const parseAndSaveContent = async (generatedContent: string, originalRequest: string): Promise<SavedContent[]> => {
+    const savedContents: SavedContent[] = []
+
+    // Extract content blocks using regex
+    const contentBlockRegex = /```(\w+)\s+(\w+-content\.md)\n([\s\S]*?)```/g
+    let match
+
+    while ((match = contentBlockRegex.exec(generatedContent)) !== null) {
+      const [, platform, filename, content] = match
+
+      const analysis = analyzeRequest(originalRequest)
+
+      const contentData: ContentData = {
+        title: originalRequest.substring(0, 100), // Use first 100 chars as title
+        platform: platform.toLowerCase(),
+        content_type: analysis.contentType,
+        content_text: content.trim(),
+      }
+
+      try {
+        const savedContent = await saveContent(contentData)
+        savedContents.push(savedContent)
+      } catch (err) {
+        console.error(`Failed to save ${platform} content:`, err)
+      }
+    }
+
+    return savedContents
+  }
+
   return {
     sendMessage,
     checkOllamaStatus,
@@ -337,5 +453,9 @@ You MUST format your response using markdown code blocks for each platform. This
     setProvider,
     model,
     setModel,
+    saveContent,
+    getAllContent,
+    getContentVersions,
+    parseAndSaveContent,
   }
 }
