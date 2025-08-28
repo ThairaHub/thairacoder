@@ -1,16 +1,16 @@
-import * as Babel from '@babel/standalone';
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import * as Babel from "@babel/standalone"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 
 export interface VirtualModule {
-  filename: string;
-  content: string;
+  filename: string
+  content: string
 }
 
-let moduleRegistry: Record<string, any> = {};
+let moduleRegistry: Record<string, any> = {}
 
 // Built-in modules that can be imported
 const builtinModules: Record<string, any> = {
-  'react': {
+  react: {
     default: React,
     useState,
     useEffect,
@@ -20,114 +20,99 @@ const builtinModules: Record<string, any> = {
     createElement: React.createElement,
     Fragment: React.Fragment,
   },
-};
+}
 
 export function registerModules(modules: VirtualModule[]) {
-  moduleRegistry = { ...builtinModules }; // reset with builtins
+  moduleRegistry = { ...builtinModules } // reset with builtins
 
   modules.forEach((mod) => {
     try {
-      // Enhanced import rewriting
-      let rewritten = mod.content;
-      
+      let rewritten = mod.content
+
       // Handle named imports: import { a, b } from 'module'
-      rewritten = rewritten.replace(
-        /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"];?/g,
-        (_, imports, path) => {
-          const resolvedPath = path.startsWith('.') ? resolvePath(mod.filename, path) : path;
-          const importNames = imports.split(',').map((imp: string) => imp.trim());
-          return importNames.map((name: string) => 
-            `const ${name} = requireModule('${resolvedPath}').${name};`
-          ).join('\n');
-        }
-      );
-      
+      rewritten = rewritten.replace(/import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"];?/g, (_, imports, path) => {
+        const resolvedPath = path.startsWith(".") ? resolvePath(mod.filename, path) : path
+        const importNames = imports.split(",").map((imp: string) => imp.trim())
+        return importNames.map((name: string) => `const ${name} = requireModule('${resolvedPath}').${name};`).join("\n")
+      })
+
       // Handle default imports: import X from 'module'
-      rewritten = rewritten.replace(
-        /import\s+(\w+)\s+from\s*['"]([^'"]+)['"];?/g,
-        (_, importName, path) => {
-          const resolvedPath = path.startsWith('.') ? resolvePath(mod.filename, path) : path;
-          return `const ${importName} = requireModule('${resolvedPath}').default || requireModule('${resolvedPath}');`;
-        }
-      );
+      rewritten = rewritten.replace(/import\s+(\w+)\s+from\s*['"]([^'"]+)['"];?/g, (_, importName, path) => {
+        const resolvedPath = path.startsWith(".") ? resolvePath(mod.filename, path) : path
+        return `const ${importName} = requireModule('${resolvedPath}').default || requireModule('${resolvedPath}');`
+      })
 
       // Handle mixed imports: import X, { a, b } from 'module'
       rewritten = rewritten.replace(
         /import\s+(\w+)\s*,\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"];?/g,
         (_, defaultImport, namedImports, path) => {
-          const resolvedPath = path.startsWith('.') ? resolvePath(mod.filename, path) : path;
-          const importNames = namedImports.split(',').map((imp: string) => imp.trim());
+          const resolvedPath = path.startsWith(".") ? resolvePath(mod.filename, path) : path
+          const importNames = namedImports.split(",").map((imp: string) => imp.trim())
           const imports = [
             `const ${defaultImport} = requireModule('${resolvedPath}').default || requireModule('${resolvedPath}');`,
-            ...importNames.map((name: string) => `const ${name} = requireModule('${resolvedPath}').${name};`)
-          ];
-          return imports.join('\n');
-        }
-      );
+            ...importNames.map((name: string) => `const ${name} = requireModule('${resolvedPath}').${name};`),
+          ]
+          return imports.join("\n")
+        },
+      )
 
       const transformed = Babel.transform(rewritten, {
         presets: [
-          ['react', { runtime: 'classic' }],
-          ['typescript', { allowNamespaces: true }]
+          ["react", { runtime: "classic" }],
+          ["typescript", { allowNamespaces: true }],
         ],
-        plugins: [
-          ['transform-react-jsx', { pragma: 'React.createElement' }]
-        ]
-      }).code;
+        plugins: [["transform-react-jsx", { pragma: "React.createElement" }]],
+      }).code
 
-      if (!transformed) return;
+      if (!transformed) return
 
       moduleRegistry[mod.filename] = new Function(
-        'React',
-        'exports',
-        'requireModule',
-        'useState',
-        'useEffect', 
-        'useRef',
-        'useCallback',
-        'useMemo',
-        transformed + `\nif (typeof exports.default === 'undefined' && Object.keys(exports).length === 0) {
+        "React",
+        "exports",
+        "requireModule",
+        transformed +
+          `\nif (typeof exports.default === 'undefined' && Object.keys(exports).length === 0) {
           // If no exports, try to find a component
           const keys = Object.keys(this);
           const componentKey = keys.find(k => typeof this[k] === 'function' && k[0] === k[0].toUpperCase());
           if (componentKey) exports.default = this[componentKey];
-        }`
-      );
+        }`,
+      )
     } catch (err) {
-      console.error(`Error compiling ${mod.filename}:`, err);
+      console.error(`Error compiling ${mod.filename}:`, err)
       moduleRegistry[mod.filename] = () => {
-        throw new Error(`Failed to compile ${mod.filename}: ${err}`);
-      };
+        throw new Error(`Failed to compile ${mod.filename}: ${err}`)
+      }
     }
-  });
+  })
 }
 
 export function requireModule(filename: string) {
-  const mod = moduleRegistry[filename];
-  if (!mod) throw new Error(`Module ${filename} not found`);
-  
-  if (typeof mod !== 'function') {
-    return mod; // Return builtin modules as-is
+  const mod = moduleRegistry[filename]
+  if (!mod) throw new Error(`Module ${filename} not found`)
+
+  if (typeof mod !== "function") {
+    return mod // Return builtin modules as-is
   }
-  
-  const exports: any = {};
+
+  const exports: any = {}
   try {
-    mod.call({}, React, exports, requireModule, useState, useEffect, useRef, useCallback, useMemo);
-    return exports.default || exports;
+    mod.call({}, React, exports, requireModule)
+    return exports.default || exports
   } catch (err) {
-    console.error(`Error executing module ${filename}:`, err);
-    throw err;
+    console.error(`Error executing module ${filename}:`, err)
+    throw err
   }
 }
 
 // Resolve relative paths
 function resolvePath(from: string, relative: string) {
-  const parts = from.split('/').slice(0, -1); // remove current filename
-  const relParts = relative.split('/');
+  const parts = from.split("/").slice(0, -1) // remove current filename
+  const relParts = relative.split("/")
   for (const part of relParts) {
-    if (part === '.') continue;
-    else if (part === '..') parts.pop();
-    else parts.push(part);
+    if (part === ".") continue
+    else if (part === "..") parts.pop()
+    else parts.push(part)
   }
-  return parts.join('/');
+  return parts.join("/")
 }
