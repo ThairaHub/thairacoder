@@ -1,12 +1,14 @@
-from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi import FastAPI, Request, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 import google.generativeai as genai
 import os
 import json
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator, List, Optional
+from datetime import datetime, date
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from .database import get_db, Content
 from .models import ContentCreate, ContentResponse, ContentUpdate
 
@@ -122,11 +124,27 @@ async def create_content(content: ContentCreate, db: Session = Depends(get_db)):
     return db_content
 
 @app.get("/content/", response_model=List[ContentResponse])
-async def get_all_content(db: Session = Depends(get_db), latest_only: bool = True):
-    """Get all content entries"""
+async def get_all_content(
+    db: Session = Depends(get_db), 
+    latest_only: bool = True,
+    platform: Optional[str] = Query(None, description="Filter by platform (twitter, linkedin, threads)"),
+    date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD format)")
+):
+    """Get all content entries with optional filtering by platform and date"""
     query = db.query(Content)
+    
     if latest_only:
         query = query.filter(Content.is_latest == True)
+    
+    if platform and platform.lower() != "all":
+        query = query.filter(Content.platform.ilike(f"%{platform}%"))
+    
+    if date:
+        try:
+            filter_date = datetime.strptime(date, "%Y-%m-%d").date()
+            query = query.filter(func.date(Content.created_at) == filter_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     
     return query.order_by(Content.created_at.desc()).all()
 

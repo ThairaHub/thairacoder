@@ -6,7 +6,8 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Code, Eye, Database } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Send, Code, Eye, Database, Filter } from "lucide-react"
 import { ChatMessage } from "./ChatMessage"
 import { PreviewPane } from "./PreviewPane"
 import { useContentGeneration } from "@/hooks/useContentGeneration"
@@ -49,6 +50,9 @@ export function ChatInterface() {
   const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem("geminiApiKey") || "")
   const [isLoadingContent, setIsLoadingContent] = useState(false)
   const [databaseContent, setDatabaseContent] = useState<DatabaseContent[]>([])
+  const [showFilters, setShowFilters] = useState(false)
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("all")
+  const [selectedDate, setSelectedDate] = useState<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { sendMessage, isLoading, provider, setProvider, model, setModel } = useContentGeneration()
@@ -64,7 +68,22 @@ export function ChatInterface() {
   const loadContentFromDatabase = async () => {
     setIsLoadingContent(true)
     try {
-      const response = await fetch("http://localhost:8001/content/", {
+      let url = "http://localhost:8001/content/"
+      const params = new URLSearchParams()
+
+      if (selectedPlatform !== "all") {
+        params.append("platform", selectedPlatform)
+      }
+
+      if (selectedDate) {
+        params.append("date", selectedDate)
+      }
+
+      if (params.toString()) {
+        url += `?${params.toString()}`
+      }
+
+      const response = await fetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -88,9 +107,14 @@ export function ChatInterface() {
           })
           .join("\n\n")
 
+        const filterInfo =
+          selectedPlatform !== "all" || selectedDate
+            ? ` (filtered by ${selectedPlatform !== "all" ? `platform: ${selectedPlatform}` : ""}${selectedPlatform !== "all" && selectedDate ? ", " : ""}${selectedDate ? `date: ${selectedDate}` : ""})`
+            : ""
+
         const loadedMessage: Message = {
           id: Date.now().toString(),
-          content: `Loaded ${content.length} content items from database:\n\n${formattedContent}`,
+          content: `Loaded ${content.length} content items from database${filterInfo}:\n\n${formattedContent}`,
           role: "assistant",
           timestamp: new Date(),
         }
@@ -99,7 +123,7 @@ export function ChatInterface() {
       } else {
         const emptyMessage: Message = {
           id: Date.now().toString(),
-          content: "No content found in database.",
+          content: "No content found in database with the selected filters.",
           role: "assistant",
           timestamp: new Date(),
         }
@@ -202,17 +226,56 @@ export function ChatInterface() {
               <p className="text-xs text-muted-foreground">Powered by {provider === "ollama" ? "Ollama" : "Gemini"}</p>
             </div>
           </div>
-          <Button
-            onClick={loadContentFromDatabase}
-            disabled={isLoadingContent}
-            variant="outline"
-            size="sm"
-            className="text-xs h-7 px-2 bg-transparent"
-          >
-            <Database className="h-3 w-3 mr-1" />
-            {isLoadingContent ? "Loading..." : "Load Content"}
-          </Button>
+          <div className="flex items-center space-x-1">
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 px-2 bg-transparent"
+            >
+              <Filter className="h-3 w-3 mr-1" />
+              Filter
+            </Button>
+            <Button
+              onClick={loadContentFromDatabase}
+              disabled={isLoadingContent}
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 px-2 bg-transparent"
+            >
+              <Database className="h-3 w-3 mr-1" />
+              {isLoadingContent ? "Loading..." : "Load Content"}
+            </Button>
+          </div>
         </div>
+
+        {showFilters && (
+          <div className="p-2 border-b border-border bg-message-bg/30 space-y-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Platform</label>
+              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Select platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Platforms</SelectItem>
+                  <SelectItem value="twitter">Twitter/X</SelectItem>
+                  <SelectItem value="linkedin">LinkedIn</SelectItem>
+                  <SelectItem value="threads">Threads</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Date</label>
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="h-7 text-xs"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <ScrollArea className="flex-1 p-2">
