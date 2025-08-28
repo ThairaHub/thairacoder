@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Code, Eye } from "lucide-react"
+import { Send, Code, Eye, Database } from "lucide-react"
 import { ChatMessage } from "./ChatMessage"
 import { PreviewPane } from "./PreviewPane"
 import { useContentGeneration } from "@/hooks/useContentGeneration"
@@ -19,6 +19,18 @@ interface Message {
   content: string
   role: "user" | "assistant"
   timestamp: Date
+}
+
+interface DatabaseContent {
+  id: number
+  title: string
+  platform: string
+  content_type: string
+  content_text: string
+  version: number
+  is_latest: boolean
+  created_at: string
+  updated_at: string
 }
 
 export function ChatInterface() {
@@ -35,6 +47,8 @@ export function ChatInterface() {
   const [activeView, setActiveView] = useState<"preview" | "code">("code")
   const [selectedFilesForContext, setSelectedFilesForContext] = useState<CodeStructBlock[]>([])
   const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem("geminiApiKey") || "")
+  const [isLoadingContent, setIsLoadingContent] = useState(false)
+  const [databaseContent, setDatabaseContent] = useState<DatabaseContent[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { sendMessage, isLoading, provider, setProvider, model, setModel } = useContentGeneration()
@@ -46,6 +60,63 @@ export function ChatInterface() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const loadContentFromDatabase = async () => {
+    setIsLoadingContent(true)
+    try {
+      const response = await fetch("http://localhost:8001/content/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch content")
+      }
+
+      const content: DatabaseContent[] = await response.json()
+      setDatabaseContent(content)
+
+      // Create a message with loaded content formatted for file creation
+      if (content.length > 0) {
+        const formattedContent = content
+          .map((item) => {
+            const platformExtension = item.platform.toLowerCase().replace(/[^a-z0-9]/g, "-")
+            const dateStr = new Date(item.created_at).toLocaleDateString()
+            return `\`\`\`${item.platform.toLowerCase()} ${item.title.replace(/[^a-zA-Z0-9]/g, "-")}-${platformExtension}.md\n${item.content_text}\n\`\`\``
+          })
+          .join("\n\n")
+
+        const loadedMessage: Message = {
+          id: Date.now().toString(),
+          content: `Loaded ${content.length} content items from database:\n\n${formattedContent}`,
+          role: "assistant",
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => [...prev, loadedMessage])
+      } else {
+        const emptyMessage: Message = {
+          id: Date.now().toString(),
+          content: "No content found in database.",
+          role: "assistant",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, emptyMessage])
+      }
+    } catch (error) {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: `Error loading content: ${error instanceof Error ? error.message : "Unknown error"}`,
+        role: "assistant",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoadingContent(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,6 +202,16 @@ export function ChatInterface() {
               <p className="text-xs text-muted-foreground">Powered by {provider === "ollama" ? "Ollama" : "Gemini"}</p>
             </div>
           </div>
+          <Button
+            onClick={loadContentFromDatabase}
+            disabled={isLoadingContent}
+            variant="outline"
+            size="sm"
+            className="text-xs h-7 px-2 bg-transparent"
+          >
+            <Database className="h-3 w-3 mr-1" />
+            {isLoadingContent ? "Loading..." : "Load Content"}
+          </Button>
         </div>
 
         {/* Messages */}

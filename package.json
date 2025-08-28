@@ -51,6 +51,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "latest",
     "file-saver": "latest",
+    "geist": "latest",
     "input-otp": "latest",
     "jiti": "latest",
     "jszip": "latest",
