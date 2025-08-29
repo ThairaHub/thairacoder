@@ -4,3 +4,6 @@ google-generativeai
 python-dotenv
 sqlalchemy
 psycopg2-binary
+requests
+beautifulsoup4
+pytrends
