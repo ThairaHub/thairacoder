@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Copy, Check, Edit, Save, X } from "lucide-react"
+import { Copy, Check, Edit, Save, X, Share } from "lucide-react"
 
 type ContentViewerProps = {
   content: string
@@ -125,6 +125,10 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
           )}
         </div>
         <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
+            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 px-2 sm:px-3 text-xs">
+              <Share className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Post</span>
+            </Button>
           <Button size="sm" variant="outline" onClick={handleCopy} className="h-8 px-2 sm:px-3 text-xs bg-transparent">
             {copied ? <Check className="h-3 w-3 sm:mr-1 text-green-500" /> : <Copy className="h-3 w-3 sm:mr-1" />}
             <span className="hidden sm:inline">{copied ? "Copied!" : "Copy"}</span>
