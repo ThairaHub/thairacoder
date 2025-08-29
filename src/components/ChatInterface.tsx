@@ -7,14 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Send, Code, Eye, Database, Filter, Menu, X, FileText } from "lucide-react"
+import { Send, Code, Eye, Database, Filter, Menu, X } from "lucide-react"
 import { ChatMessage } from "./ChatMessage"
 import { PreviewPane } from "./PreviewPane"
 import { useContentGeneration } from "@/hooks/useContentGeneration"
 import type { CodeStructBlock } from "@/lib/types"
 import ModelSelector from "./OllamaModelSelector"
 import { cn } from "@/lib/utils"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 interface Message {
   id: string
@@ -61,7 +60,6 @@ export function ChatInterface({ input, setInput }: ChatInterfaceProps) {
   const [selectedDate, setSelectedDate] = useState<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const [mobileView, setMobileView] = useState<"chat" | "content">("chat")
 
   const { sendMessage, isLoading, provider, setProvider, model, setModel } = useContentGeneration()
 
@@ -222,55 +220,18 @@ export function ChatInterface({ input, setInput }: ChatInterfaceProps) {
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
       )}
 
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b border-border p-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="relative w-8 h-8">
-              <img src="logo_TH.png" className="w-8 h-8 object-contain rounded-md" />
-              <div className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-ai-glow rounded-full animate-pulse" />
-            </div>
-            <h1 className="text-sm font-semibold bg-gradient-to-r from-ai-glow to-ai-glow-soft bg-clip-text text-transparent">
-              ThairaContent
-            </h1>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => setMobileView("chat")} className="cursor-pointer">
-                <div className="flex items-center space-x-2">
-                  <Send className="h-4 w-4" />
-                  <span>Chat Interface</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setMobileView("content")} className="cursor-pointer">
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4" />
-                  <span>Content Blocks</span>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
       {/* Chat Panel */}
       <div
         className={cn(
-          "flex flex-col bg-chat-bg border-r border-border transition-transform duration-300 z-40",
+          "flex flex-col bg-chat-bg border-r border-border transition-transform duration-300 z-50",
           "w-full sm:w-96 lg:w-1/3",
           "lg:relative lg:translate-x-0",
-          "lg:block",
-          mobileView === "chat" ? "block" : "hidden lg:block",
-          "pt-16 lg:pt-0", // Add top padding on mobile for the fixed header
+          "fixed inset-y-0 left-0",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {/* Header - hidden on mobile since we have unified header */}
-        <div className="hidden lg:flex items-center justify-between p-2 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
+        {/* Header */}
+        <div className="flex items-center justify-between p-2 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
@@ -424,16 +385,9 @@ export function ChatInterface({ input, setInput }: ChatInterfaceProps) {
       </div>
 
       {/* Preview Panel */}
-      <div
-        className={cn(
-          "flex flex-col w-full bg-preview-bg lg:ml-0",
-          "lg:block",
-          mobileView === "content" ? "block" : "hidden lg:block",
-          "pt-16 lg:pt-0", // Add top padding on mobile for the fixed header
-        )}
-      >
-        {/* Header - hidden on mobile since we have unified header */}
-        <div className="hidden lg:flex items-center justify-between p-2 border-b border-border">
+      <div className="flex flex-col w-full bg-preview-bg lg:ml-0">
+        {/* Header */}
+        <div className="flex items-center justify-between p-2 border-b border-border">
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
