@@ -1,5 +1,5 @@
-import { ChatInterface } from "../src/components/ChatInterface"
+import { LandingHero } from "../src/components/LandingHero"
 
 export default function Page() {
-  return <ChatInterface />
+  return <LandingHero />
 }
