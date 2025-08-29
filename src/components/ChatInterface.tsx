@@ -413,7 +413,7 @@ export function ChatInterface({ input, setInput }: ChatInterfaceProps) {
                   )}
                 >
                   <Eye className="h-3 w-3 mr-1" />
-                  Preview
+                  Files
                 </Button>
                 <Button
                   variant={activeView === "code" ? "default" : "ghost"}
@@ -422,7 +422,7 @@ export function ChatInterface({ input, setInput }: ChatInterfaceProps) {
                   className={cn("text-xs h-7 px-2", activeView === "code" ? "bg-primary text-primary-foreground" : "")}
                 >
                   <Code className="h-3 w-3 mr-1" />
-                  Raw
+                  Content
                 </Button>
               </div>
             </div>

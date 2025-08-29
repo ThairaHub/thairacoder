@@ -4,7 +4,7 @@ import type React from "react"
 import { ContentViewer } from "./gpt-version/ContentViewer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card } from "@/components/ui/card"
-import { FileText, X, ChevronDown, Menu } from "lucide-react"
+import { FileText, X, ChevronDown, Menu, FileStack, ArrowLeft } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import type { CodeBlock, CodeStructBlock, TreeNode } from "@/lib/types"
 import { transformCodeBlocks } from "@/lib/code-structure-block"
@@ -372,9 +372,9 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
 
         <button
           onClick={() => setIsMobileSidebarOpen(true)}
-          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-background border border-border rounded-md shadow-lg"
+          className="lg:hidden top-12 left-4 z-50 p-2 bg-background border border-border  shadow-lg"
         >
-          <Menu className="h-4 w-4" />
+          <FileStack className="h-4 w-4" />
         </button>
 
         <div
@@ -574,7 +574,8 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
             <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Select a content file to view it</p>
+                <ArrowLeft className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm"> Select a content file to view it</p>
               </div>
             </div>
           )}
@@ -588,6 +589,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
           <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
           <p className="text-sm text-muted-foreground mb-4">Preview of your generated social media content</p>
         </div>
+
 
         {contentBlocks.length > 0 ? (
           <div className="h-[calc(100%-120px)] border rounded-lg overflow-hidden">
@@ -629,6 +631,8 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
           </div>
         )}
       </div>
+
+      
     )
   }
 }
