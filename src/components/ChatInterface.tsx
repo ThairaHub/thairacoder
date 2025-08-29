@@ -34,7 +34,12 @@ interface DatabaseContent {
   updated_at: string
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  input?: string | ''
+  setInput: (input:string) => void
+}
+
+export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -44,7 +49,7 @@ export function ChatInterface() {
       timestamp: new Date(),
     },
   ])
-  const [input, setInput] = useState("")
+
   const [activeView, setActiveView] = useState<"preview" | "code">("code")
   const [selectedFilesForContext, setSelectedFilesForContext] = useState<CodeStructBlock[]>([])
   const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem("geminiApiKey") || "")
@@ -68,7 +73,7 @@ export function ChatInterface() {
   const loadContentFromDatabase = async () => {
     setIsLoadingContent(true)
     try {
-      let url = "http://localhost:8001/content/"
+      let url = "http://localhost:8000/content/"
       const params = new URLSearchParams()
 
       if (selectedPlatform !== "all") {
@@ -259,6 +264,7 @@ export function ChatInterface() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Platforms</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="twitter">Twitter/X</SelectItem>
                   <SelectItem value="linkedin">LinkedIn</SelectItem>
                   <SelectItem value="threads">Threads</SelectItem>

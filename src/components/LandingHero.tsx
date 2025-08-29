@@ -17,9 +17,10 @@ const trendingTopics = [
 
 export function LandingHero() {
   const [showChat, setShowChat] = useState(false)
+  const [input, setInput] = useState("")
 
   if (showChat) {
-    return <ChatInterface />
+    return <ChatInterface input={input} setInput={setInput} />
   }
 
   return (
@@ -74,7 +75,9 @@ export function LandingHero() {
               <Card
                 key={index}
                 className="p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105 border-2 hover:border-primary/20"
-                onClick={() => setShowChat(true)}
+                onClick={() => {setInput(trend.topic); 
+                                setShowChat(true)
+                              }}
               >
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="font-semibold text-lg text-balance">{trend.topic}</h3>

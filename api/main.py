@@ -211,4 +211,4 @@ async def delete_content(content_id: int, db: Session = Depends(get_db)):
     return {"message": "Content deleted successfully"}
 
 if __name__ == '__main__':
-    uvicorn.run(app, host="0.0.0.0", port=8001, env_file='.env')
+    uvicorn.run(app, host="0.0.0.0", port=8000, env_file='.env')

@@ -54,6 +54,7 @@ export function useContentGeneration() {
     // Determine platform
     const isTwitter = /twitter|x\.com|tweet|thread/i.test(request)
     const isThreads = /threads|meta threads/i.test(request)
+    const isMedium = /threads|meta threads/i.test(request)
     const isLinkedIn = /linkedin|professional/i.test(request)
 
     // Determine content type
@@ -68,7 +69,7 @@ export function useContentGeneration() {
     const isEngaging = /engaging|viral|catchy/i.test(request)
 
     return {
-      platform: isTwitter ? "twitter" : isThreads ? "threads" : isLinkedIn ? "linkedin" : "general",
+      platform: isTwitter ? "twitter" : isMedium ? "medium" : isThreads ? "threads" : isLinkedIn ? "linkedin" : "general",
       contentType: isStory ? "story" : isThread ? "thread" : isArticle ? "article" : "post",
       tone: isProfessional ? "professional" : isCasual ? "casual" : isEngaging ? "engaging" : "balanced",
       hasContext: !!context && context.length > 0,
@@ -80,6 +81,7 @@ export function useContentGeneration() {
    */
   const getPrompt = (request: string, context?: string): string => {
     const analysis = analyzeRequest(request, context)
+    console.log(analysis)
 
     let basePrompt = `You are an expert social media content creator specializing in medium, X (Twitter), Threads, and LinkedIn. Create engaging, high-quality content that follows platform best practices and drives engagement.
 
@@ -91,7 +93,7 @@ Create a storytelling about the requested topic following these rules:
 
 | Section | Purpose | Key Elements to Include |
 | --- | --- | --- |
-| **1. Introduction** | Hook the reader and set the stage. | • A brief, engaging opening (fact, question, anecdote). • Contextual background that frames the topic. • Clear thesis statement or central claim. |
+| **1. Introduction** | Hook the reader, make them feel special and set the stage. | • A brief, engaging opening (fact, question, anecdote). • Contextual background that frames the topic. • Clear thesis statement or central claim. |
 | **2. Current State / Problem Statement** | Show what is happening now or why the issue matters. | • Description of the present situation or trend. • Evidence (data, examples, expert opinions). • Why this matters to the audience. |
 | **3. Forces of Change / Drivers** | Explain the key forces reshaping the field. | • Identify 2‑3 major drivers (technological, social, economic, regulatory, etc.). • Illustrate each driver with a concrete example or statistic. |
 | **4. Implications for Practice** | Translate forces into real‑world effects. | • How the changes affect daily work, strategy, or decision‑making. • Potential benefits and challenges. |
@@ -125,7 +127,10 @@ Create a storytelling about the requested topic following these rules:
 - Use professional hashtags
 - Structure for entrepeneuer audience
 - Include actionable takeaways
-- Encourage community interaction`
+- Encourage community interaction
+- Use narrative techniques to engage readers
+- Include personal anecdotes or case studies
+- Build emotional connection with audience`
     }  else if (analysis.platform === "threads") {
       basePrompt += `\n\n**Threads Optimization:**
 - 500 character limit per post
