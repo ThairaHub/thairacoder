@@ -4,7 +4,7 @@ import type React from "react"
 import { ContentViewer } from "./gpt-version/ContentViewer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card } from "@/components/ui/card"
-import { FileText, X, ChevronDown, Menu } from "lucide-react"
+import { FileText, X, ChevronDown } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import type { CodeBlock, CodeStructBlock, TreeNode } from "@/lib/types"
 import { transformCodeBlocks } from "@/lib/code-structure-block"
@@ -168,7 +168,6 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
   const [contentBlocks, setContentBlocks] = useState<CodeStructBlock[]>([])
   const [versions, setVersions] = useState<ContentVersion[]>([])
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const handleCopy = () => {
     if (!activeTabContent) return
@@ -347,7 +346,6 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     // Set as active tab
     setActiveTab(filename)
     setSelectedFile(filename)
-    setIsMobileSidebarOpen(false)
   }
 
   const closeTab = (filename: string, e?: React.MouseEvent) => {
@@ -366,32 +364,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
   if (activeView === "code") {
     return (
       <div className="flex h-full bg-background relative">
-        {isMobileSidebarOpen && (
-          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
-        )}
-
-        <button
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-background border border-border rounded-md shadow-lg"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-
-        <div
-          className={`
-          ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          fixed lg:relative top-0 left-0 h-full w-80 max-w-[85vw] lg:max-w-none
-          border-r border-border flex flex-col bg-background z-50 lg:z-auto
-          transition-transform duration-300 ease-in-out
-        `}
-        >
-          <button
-            onClick={() => setIsMobileSidebarOpen(false)}
-            className="lg:hidden absolute top-2 right-2 p-1 hover:bg-muted rounded"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
+        <div className="w-80 max-w-[85vw] lg:max-w-none border-r border-border flex flex-col bg-background">
           <div className="p-4 border-b border-border flex-shrink-0">
             <h3 className="text-sm font-semibold text-foreground/90 mb-2">Content Structure</h3>
             {contentBlocks.length > 0 && (
