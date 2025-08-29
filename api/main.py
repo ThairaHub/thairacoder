@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .database import get_db, Content
 from .models import ContentCreate, ContentResponse, ContentUpdate
+import requests
+import random
 
 app = FastAPI()
 
@@ -31,6 +33,67 @@ app.add_middleware(
 # Configure Gemini - initial configuration (optional if API key comes from request)
 if os.environ.get("GEMINI_API_KEY"):
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+@app.get("/trends")
+async def get_trends(area: Optional[str] = Query("general", description="Area/topic to get trends for")):
+    """
+    Fetch trending topics for a specific area using AI generation
+    """
+    try:
+        # Use Gemini to generate trending topics based on the area
+        if os.environ.get("GEMINI_API_KEY"):
+            genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            
+            prompt = f"""
+            Generate 6 trending topics for {area} that would be popular on social media platforms like Twitter/X, LinkedIn, and Threads.
+            
+            Return the response as a JSON array with this exact format:
+            [
+                {{"topic": "Topic Name", "engagement": "+XXX%", "platform": "Twitter/X"}},
+                {{"topic": "Topic Name", "engagement": "+XXX%", "platform": "LinkedIn"}},
+                {{"topic": "Topic Name", "engagement": "+XXX%", "platform": "Threads"}}
+            ]
+            
+            Make sure the topics are:
+            - Current and relevant to {area}
+            - Engaging and clickable
+            - Varied across different platforms
+            - Have realistic engagement percentages between 120% and 300%
+            
+            Only return the JSON array, no other text.
+            """
+            
+            result = model.generate_content(prompt)
+            response_text = result.text.strip()
+            
+            # Clean up the response to extract JSON
+            if response_text.startswith("\`\`\`json"):
+                response_text = response_text[7:-3]
+            elif response_text.startswith("\`\`\`"):
+                response_text = response_text[3:-3]
+            
+            try:
+                trends_data = json.loads(response_text)
+                return JSONResponse({"trends": trends_data})
+            except json.JSONDecodeError:
+                # Fallback to default trends if JSON parsing fails
+                pass
+        
+        # Fallback trends if API fails or no API key
+        fallback_trends = [
+            {"topic": f"{area.title()} Innovation", "engagement": f"+{random.randint(150, 280)}%", "platform": "LinkedIn"},
+            {"topic": f"Future of {area.title()}", "engagement": f"+{random.randint(150, 280)}%", "platform": "Twitter/X"},
+            {"topic": f"{area.title()} Best Practices", "engagement": f"+{random.randint(150, 280)}%", "platform": "Threads"},
+            {"topic": f"{area.title()} Trends 2024", "engagement": f"+{random.randint(150, 280)}%", "platform": "LinkedIn"},
+            {"topic": f"{area.title()} Tips & Tricks", "engagement": f"+{random.randint(150, 280)}%", "platform": "Twitter/X"},
+            {"topic": f"{area.title()} Success Stories", "engagement": f"+{random.randint(150, 280)}%", "platform": "Threads"},
+        ]
+        
+        return JSONResponse({"trends": fallback_trends})
+        
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to fetch trends: {str(e)}"}, status_code=500)
 
 @app.post("/gemini/generate")
 async def generate(request: Request):
