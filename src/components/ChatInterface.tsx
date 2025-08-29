@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Send, Code, Eye, Database, Filter } from "lucide-react"
+import { Send, Code, Eye, Database, Filter, Menu, X } from "lucide-react"
 import { ChatMessage } from "./ChatMessage"
 import { PreviewPane } from "./PreviewPane"
 import { useContentGeneration } from "@/hooks/useContentGeneration"
@@ -35,11 +35,11 @@ interface DatabaseContent {
 }
 
 interface ChatInterfaceProps {
-  input?: string | ''
-  setInput: (input:string) => void
+  input?: string | ""
+  setInput: (input: string) => void
 }
 
-export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
+export function ChatInterface({ input, setInput }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -59,6 +59,7 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
   const [selectedPlatform, setSelectedPlatform] = useState<string>("all")
   const [selectedDate, setSelectedDate] = useState<string>("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const { sendMessage, isLoading, provider, setProvider, model, setModel } = useContentGeneration()
 
@@ -214,17 +215,37 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
   }
 
   return (
-    <div className="flex h-full bg-background">
+    <div className="flex h-full bg-background relative">
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
       {/* Chat Panel */}
-      <div className="flex flex-col w-1/3 bg-chat-bg border-r border-border">
+      <div
+        className={cn(
+          "flex flex-col bg-chat-bg border-r border-border transition-transform duration-300 z-50",
+          "w-full sm:w-96 lg:w-1/3",
+          "lg:relative lg:translate-x-0",
+          "fixed inset-y-0 left-0",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        )}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b border-border bg-gradient-to-r from-primary/10 to-ai-glow-soft/10">
           <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="lg:hidden h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
             <div className="relative w-8 h-8">
               <img src="logo_TH.png" className="w-8 h-8 object-contain rounded-md" />
               <div className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-ai-glow rounded-full animate-pulse" />
             </div>
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-sm font-semibold bg-gradient-to-r from-ai-glow to-ai-glow-soft bg-clip-text text-transparent">
                 ThairaContent
               </h1>
@@ -238,8 +259,8 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
               size="sm"
               className="text-xs h-7 px-2 bg-transparent"
             >
-              <Filter className="h-3 w-3 mr-1" />
-              Filter
+              <Filter className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Filter</span>
             </Button>
             <Button
               onClick={loadContentFromDatabase}
@@ -248,37 +269,39 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
               size="sm"
               className="text-xs h-7 px-2 bg-transparent"
             >
-              <Database className="h-3 w-3 mr-1" />
-              {isLoadingContent ? "Loading..." : "Load Content"}
+              <Database className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">{isLoadingContent ? "Loading..." : "Load"}</span>
             </Button>
           </div>
         </div>
 
         {showFilters && (
           <div className="p-2 border-b border-border bg-message-bg/30 space-y-2">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Platform</label>
-              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                <SelectTrigger className="h-7 text-xs">
-                  <SelectValue placeholder="Select platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Platforms</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="twitter">Twitter/X</SelectItem>
-                  <SelectItem value="linkedin">LinkedIn</SelectItem>
-                  <SelectItem value="threads">Threads</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Date</label>
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="h-7 text-xs"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Platform</label>
+                <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue placeholder="Select platform" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Platforms</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="twitter">Twitter/X</SelectItem>
+                    <SelectItem value="linkedin">LinkedIn</SelectItem>
+                    <SelectItem value="threads">Threads</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Date</label>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -303,7 +326,6 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
           </div>
         </ScrollArea>
 
-        {/* Provider Selection */}
         <div className="px-2 py-1 border-t border-border">
           <div className="flex space-x-1 bg-message-bg rounded-lg p-0.5">
             <Button
@@ -363,10 +385,20 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
       </div>
 
       {/* Preview Panel */}
-      <div className="flex flex-col w-full bg-preview-bg">
+      <div className="flex flex-col w-full bg-preview-bg lg:ml-0">
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b border-border">
-          <h2 className="text-sm font-semibold">Content</h2>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden h-8 w-8 p-0"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <h2 className="text-sm font-semibold">Content</h2>
+          </div>
           <div className="flex bg-message-bg rounded-lg p-0.5">
             <Button
               variant={activeView === "preview" ? "default" : "ghost"}
@@ -374,8 +406,8 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
               onClick={() => setActiveView("preview")}
               className={cn("text-xs h-7 px-2", activeView === "preview" ? "bg-primary text-primary-foreground" : "")}
             >
-              <Eye className="h-3 w-3 mr-1" />
-              Preview
+              <Eye className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Preview</span>
             </Button>
             <Button
               variant={activeView === "code" ? "default" : "ghost"}
@@ -383,8 +415,8 @@ export function ChatInterface( {input, setInput} : ChatInterfaceProps ) {
               onClick={() => setActiveView("code")}
               className={cn("text-xs h-7 px-2", activeView === "code" ? "bg-primary text-primary-foreground" : "")}
             >
-              <Code className="h-3 w-3 mr-1" />
-              Raw
+              <Code className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Raw</span>
             </Button>
           </div>
         </div>
