@@ -427,6 +427,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
             )}
           </div>
 
+          {contentBlocks.length > 0 && (
           <div className="flex flex-col space-y-1 p-2 flex-shrink-0">
             <button
               className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -467,10 +468,14 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               </DropdownMenu>
             )}
           </div>
+          )}
+
 
           <ScrollArea className="flex-1 min-h-0 p-2">
             <div className="space-y-1">
-              {contentBlocks.map((node, index) => (
+              {contentBlocks.length > 0 ?
+               (
+                contentBlocks.map((node, index) => (
                 <FileTreeNodeWithSelection
                   key={node.filename + index}
                   node={node}
@@ -478,7 +483,17 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                   selectedFiles={selectedFiles}
                   onFileSelection={handleFileSelection}
                 />
-              ))}
+                )
+               )
+            ) :(
+                <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
+                  <div className="text-center">
+                    <FileStack className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <ArrowLeft className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm"> Generate content files</p>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
