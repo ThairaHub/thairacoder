@@ -68,30 +68,41 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
   if (isEditing) {
     return (
       <div className="rounded-lg border border-border bg-background">
-        <div className="flex items-center justify-between p-3 border-b border-border">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Editing: {filename}</span>
-            {platform && <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded">{platform}</span>}
+        <div className="flex items-center justify-between p-2 sm:p-3 border-b border-border">
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
+            <span className="text-xs sm:text-sm text-muted-foreground truncate">Editing: {filename}</span>
+            {platform && (
+              <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded hidden sm:inline">
+                {platform}
+              </span>
+            )}
             {contentType && (
-              <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded">{contentType}</span>
+              <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded hidden sm:inline">
+                {contentType}
+              </span>
             )}
           </div>
-          <div className="flex space-x-2">
-            <Button size="sm" onClick={handleSave} className="h-8 px-3 text-xs">
-              <Save className="h-3 w-3 mr-1" />
-              Save
+          <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
+            <Button size="sm" onClick={handleSave} className="h-8 px-2 sm:px-3 text-xs">
+              <Save className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Save</span>
             </Button>
-            <Button size="sm" variant="outline" onClick={handleCancel} className="h-8 px-3 text-xs bg-transparent">
-              <X className="h-3 w-3 mr-1" />
-              Cancel
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              className="h-8 px-2 sm:px-3 text-xs bg-transparent"
+            >
+              <X className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Cancel</span>
             </Button>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-2 sm:p-4">
           <textarea
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
-            className="w-full h-96 p-3 text-sm bg-background border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-64 sm:h-96 p-2 sm:p-3 text-sm bg-background border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter your content here..."
           />
         </div>
@@ -101,41 +112,45 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
 
   return (
     <div className="relative rounded-lg border border-border bg-background overflow-hidden">
-      {/* Header with actions */}
-      <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">
-        <div className="flex items-center space-x-2">
+      {/* Header with actions - Made responsive */}
+      <div className="flex items-center justify-between p-2 sm:p-3 border-b border-border bg-muted/30">
+        <div className="flex items-center space-x-2 min-w-0 flex-1">
           {platform && (
             <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded font-medium">{platform}</span>
           )}
           {contentType && (
-            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded font-medium">{contentType}</span>
+            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded font-medium hidden sm:inline">
+              {contentType}
+            </span>
           )}
         </div>
-        <div className="flex space-x-2">
-          <Button size="sm" variant="outline" onClick={handleCopy} className="h-8 px-3 text-xs bg-transparent">
-            {copied ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
-            {copied ? "Copied!" : "Copy"}
+        <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
+          <Button size="sm" variant="outline" onClick={handleCopy} className="h-8 px-2 sm:px-3 text-xs bg-transparent">
+            {copied ? <Check className="h-3 w-3 sm:mr-1 text-green-500" /> : <Copy className="h-3 w-3 sm:mr-1" />}
+            <span className="hidden sm:inline">{copied ? "Copied!" : "Copy"}</span>
           </Button>
           {onSave && (
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 px-3 text-xs">
-              <Edit className="h-3 w-3 mr-1" />
-              Edit
+            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 px-2 sm:px-3 text-xs">
+              <Edit className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Edit</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Content display */}
-      <div className="max-h-96 overflow-y-auto">
-        <div className="p-4 space-y-4">
+      {/* Content display - Added responsive height and better mobile scrolling */}
+      <div className="max-h-64 sm:max-h-96 overflow-y-auto">
+        <div className="p-2 sm:p-4 space-y-4">
           {sections.map((section, index) => (
             <div key={index} className="space-y-2">
               {section.title && (
-                <h4 className="text-sm font-semibold text-foreground/90 border-b border-border/50 pb-1">
+                <h4 className="text-sm font-semibold text-foreground/90 border-b border-border/50 pb-1 break-words">
                   {section.title}
                 </h4>
               )}
-              <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{section.content}</div>
+              <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed break-words">
+                {section.content}
+              </div>
             </div>
           ))}
         </div>

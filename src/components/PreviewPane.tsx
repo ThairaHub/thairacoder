@@ -4,7 +4,7 @@ import type React from "react"
 import { ContentViewer } from "./gpt-version/ContentViewer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card } from "@/components/ui/card"
-import { FileText, X, ChevronDown } from "lucide-react"
+import { FileText, X, ChevronDown, Menu } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import type { CodeBlock, CodeStructBlock, TreeNode } from "@/lib/types"
 import { transformCodeBlocks } from "@/lib/code-structure-block"
@@ -168,6 +168,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
   const [contentBlocks, setContentBlocks] = useState<CodeStructBlock[]>([])
   const [versions, setVersions] = useState<ContentVersion[]>([])
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const handleCopy = () => {
     if (!activeTabContent) return
@@ -346,6 +347,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     // Set as active tab
     setActiveTab(filename)
     setSelectedFile(filename)
+    setIsMobileSidebarOpen(false)
   }
 
   const closeTab = (filename: string, e?: React.MouseEvent) => {
@@ -363,9 +365,33 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
 
   if (activeView === "code") {
     return (
-      <div className="flex h-full bg-background">
-        {/* File Tree */}
-        <div className="w-80 border-r border-border flex flex-col h-full">
+      <div className="flex h-full bg-background relative">
+        {isMobileSidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+        )}
+
+        <button
+          onClick={() => setIsMobileSidebarOpen(true)}
+          className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-background border border-border rounded-md shadow-lg"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+
+        <div
+          className={`
+          ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          fixed lg:relative top-0 left-0 h-full w-80 max-w-[85vw] lg:max-w-none
+          border-r border-border flex flex-col bg-background z-50 lg:z-auto
+          transition-transform duration-300 ease-in-out
+        `}
+        >
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="lg:hidden absolute top-2 right-2 p-1 hover:bg-muted rounded"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
           <div className="p-4 border-b border-border flex-shrink-0">
             <h3 className="text-sm font-semibold text-foreground/90 mb-2">Content Structure</h3>
             {contentBlocks.length > 0 && (
@@ -375,12 +401,13 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                 </p>
                 <div className="flex flex-col space-y-1">
                   <div className="text-[10px] text-muted-foreground">Content Selection:</div>
-                  <div className="flex space-x-1">
+                  <div className="flex flex-wrap gap-1">
                     <button
                       onClick={selectAllFiles}
                       className="px-1.5 py-0.5 text-[10px] bg-primary/20 text-white/80 rounded hover:bg-primary/30 transition-colors"
                     >
-                      Select All ({allFiles.length})
+                      <span className="hidden sm:inline">Select All ({allFiles.length})</span>
+                      <span className="sm:hidden">All ({allFiles.length})</span>
                     </button>
                     <button
                       onClick={clearSelection}
@@ -398,22 +425,24 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               </>
             )}
           </div>
+
           <div className="flex flex-col space-y-1 p-2 flex-shrink-0">
             <button
               className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
               onClick={() => downloadCodeAsZip(allFiles)}
             >
-              Download All Content
+              <span className="hidden sm:inline">Download All Content</span>
+              <span className="sm:hidden">Download</span>
             </button>
 
             {versions.length > 1 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 flex items-center justify-between">
-                    <span className="text-[10px]">
+                    <span className="text-[10px] truncate">
                       {versions.find((v) => v.id === activeVersionId)?.name || "Select Version"}
                     </span>
-                    <ChevronDown className="h-3 w-3 ml-1" />
+                    <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-40 bg-background border border-border">
@@ -437,6 +466,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               </DropdownMenu>
             )}
           </div>
+
           <ScrollArea className="flex-1 min-h-0 p-2">
             <div className="space-y-1">
               {contentBlocks.map((node, index) => (
@@ -464,17 +494,15 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
           </div>
         </div>
 
-        {/* File Content Viewer with Tabs */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
           {openTabs.length > 0 ? (
             <>
-              {/* Tab Bar */}
               <div className="border-b border-border bg-background">
                 <div className="flex items-center overflow-x-auto scrollbar-hide">
                   {openTabs.map((tabFile) => (
                     <div
                       key={tabFile}
-                      className={`flex items-center px-3 py-2 border-r border-border cursor-pointer min-w-0 flex-shrink-0 ${
+                      className={`flex items-center px-2 sm:px-3 py-2 border-r border-border cursor-pointer min-w-0 flex-shrink-0 ${
                         activeTab === tabFile
                           ? "bg-message-bg text-foreground"
                           : "bg-background hover:bg-message-bg/50 text-muted-foreground"
@@ -482,7 +510,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                       onClick={() => setActiveTab(tabFile)}
                     >
                       <FileText className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span className="text-[10px] truncate max-w-[100px]" title={tabFile}>
+                      <span className="text-[10px] truncate max-w-[60px] sm:max-w-[100px]" title={tabFile}>
                         {tabFile}
                       </span>
                       <button
@@ -496,22 +524,20 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                 </div>
               </div>
 
-              {/* Active Tab Content */}
               {activeTab && (
-                <div className="flex-1 relative">
-                  <div className="p-4">
+                <div className="flex-1 relative min-h-0">
+                  <div className="p-2 sm:p-4 h-full overflow-auto">
                     {activeTabContent ? (
-                      <Card className="p-4 bg-message-bg border-border relative">
-                        {/* File info */}
+                      <Card className="p-2 sm:p-4 bg-message-bg border-border relative">
                         <div className="mb-4">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4 text-ai-glow" />
-                            <span className="text-sm font-semibold text-foreground/90">{activeTab}</span>
+                          <div className="flex items-center space-x-2 flex-wrap">
+                            <FileText className="h-4 w-4 text-ai-glow flex-shrink-0" />
+                            <span className="text-sm font-semibold text-foreground/90 truncate">{activeTab}</span>
                             <span className="text-xs text-muted-foreground">({activeTabContent.language})</span>
                           </div>
                         </div>
 
-                        <div style={{ overflow: "hidden" }}>
+                        <div className="overflow-hidden">
                           <ContentViewer
                             key={activeTab}
                             content={activeTabContent.content || ""}
@@ -544,7 +570,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
               )}
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-sm">Select a content file to view it</p>
@@ -556,7 +582,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
     )
   } else {
     return (
-      <div className="p-4 h-full">
+      <div className="p-2 sm:p-4 h-full">
         <div className="mb-4">
           <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
           <p className="text-sm text-muted-foreground mb-4">Preview of your generated social media content</p>
@@ -564,12 +590,12 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
 
         {contentBlocks.length > 0 ? (
           <div className="h-[calc(100%-120px)] border rounded-lg overflow-hidden">
-            <ScrollArea className="h-full p-4">
+            <ScrollArea className="h-full p-2 sm:p-4">
               {contentBlocks.map((block, index) => (
-                <Card key={index} className="mb-4 p-4 bg-message-bg border-border">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <FileText className="h-4 w-4 text-ai-glow" />
-                    <span className="text-sm font-semibold">{block.filename}</span>
+                <Card key={index} className="mb-4 p-2 sm:p-4 bg-message-bg border-border">
+                  <div className="flex items-center space-x-2 mb-2 flex-wrap">
+                    <FileText className="h-4 w-4 text-ai-glow flex-shrink-0" />
+                    <span className="text-sm font-semibold truncate">{block.filename}</span>
                     <span className="text-xs text-muted-foreground">({block.language})</span>
                   </div>
                   <ContentViewer
@@ -579,11 +605,11 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
                         ? "X (Twitter)"
                         : block.language === "medium"
                           ? "Medium"
-                        : block.language === "threads"
-                          ? "Threads"
-                          : block.language === "linkedin"
-                            ? "LinkedIn"
-                            : undefined
+                          : block.language === "threads"
+                            ? "Threads"
+                            : block.language === "linkedin"
+                              ? "LinkedIn"
+                              : undefined
                     }
                     contentType={block.language}
                     filename={block.filename}
@@ -594,7 +620,7 @@ export function PreviewPane({ messages, activeView, provider, onFilesSelected }:
           </div>
         ) : (
           <div className="flex items-center justify-center h-64 border rounded-lg bg-muted/20">
-            <div className="text-center text-muted-foreground">
+            <div className="text-center text-muted-foreground p-4">
               <div className="text-4xl mb-2">📝</div>
               <p>No content found</p>
               <p className="text-xs mt-1">Generate some social media content to see a preview</p>
