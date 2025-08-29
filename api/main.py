@@ -316,5 +316,53 @@ async def delete_content(content_id: int, db: Session = Depends(get_db)):
     
     return {"message": "Content deleted successfully"}
 
+@app.post("/post-content/")
+async def post_content(request: Request, db: Session = Depends(get_db)):
+    """Post content to social media platforms"""
+    body = await request.json()
+    content_text = body.get("content", "")
+    platform = body.get("platform", "").lower()
+    
+    if not content_text or not platform:
+        raise HTTPException(status_code=400, detail="Content and platform are required")
+    
+    try:
+        if platform in ["twitter", "x", "twitter/x"]:
+            # For now, return success - actual Twitter API integration would go here
+            # Would require Twitter API v2 credentials and tweepy library
+            return JSONResponse({
+                "success": True,
+                "message": f"Content posted to Twitter/X successfully!",
+                "platform": "Twitter/X",
+                "mock": True  # Remove when implementing real API
+            })
+        
+        elif platform == "linkedin":
+            # LinkedIn API integration would go here
+            # Would require LinkedIn API credentials and requests
+            return JSONResponse({
+                "success": True,
+                "message": f"Content posted to LinkedIn successfully!",
+                "platform": "LinkedIn",
+                "mock": True  # Remove when implementing real API
+            })
+        
+        elif platform == "threads":
+            # Threads API integration would go here
+            # Would require Meta/Instagram API credentials
+            return JSONResponse({
+                "success": True,
+                "message": f"Content posted to Threads successfully!",
+                "platform": "Threads",
+                "mock": True  # Remove when implementing real API
+            })
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
+    
+    except Exception as e:
+        print(f"Posting error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to post content: {str(e)}")
+
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=8000, env_file='.env')

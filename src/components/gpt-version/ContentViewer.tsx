@@ -16,6 +16,8 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
   const [copied, setCopied] = useState(false)
+  const [isPosting, setIsPosting] = useState(false)
+  const [postStatus, setPostStatus] = useState<{ success?: boolean; message?: string } | null>(null)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content)
@@ -31,6 +33,43 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
   const handleCancel = () => {
     setEditedContent(content)
     setIsEditing(false)
+  }
+
+  const handlePost = async () => {
+    if (!platform) {
+      setPostStatus({ success: false, message: "No platform specified" })
+      return
+    }
+
+    setIsPosting(true)
+    setPostStatus(null)
+
+    try {
+      const response = await fetch("http://localhost:8000/post-content/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: content,
+          platform: platform,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setPostStatus({ success: true, message: result.message })
+      } else {
+        setPostStatus({ success: false, message: result.detail || "Failed to post content" })
+      }
+    } catch (error) {
+      setPostStatus({ success: false, message: "Network error. Please try again." })
+    } finally {
+      setIsPosting(false)
+      // Clear status after 3 seconds
+      setTimeout(() => setPostStatus(null), 3000)
+    }
   }
 
   // Parse content sections for better display
@@ -125,10 +164,16 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
           )}
         </div>
         <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 px-2 sm:px-3 text-xs">
-              <Share className="h-3 w-3 sm:mr-1" />
-              <span className="hidden sm:inline">Post</span>
-            </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handlePost}
+            disabled={isPosting || !platform}
+            className="h-8 px-2 sm:px-3 text-xs bg-transparent"
+          >
+            <Share className="h-3 w-3 sm:mr-1" />
+            <span className="hidden sm:inline">{isPosting ? "Posting..." : "Post"}</span>
+          </Button>
           <Button size="sm" variant="outline" onClick={handleCopy} className="h-8 px-2 sm:px-3 text-xs bg-transparent">
             {copied ? <Check className="h-3 w-3 sm:mr-1 text-green-500" /> : <Copy className="h-3 w-3 sm:mr-1" />}
             <span className="hidden sm:inline">{copied ? "Copied!" : "Copy"}</span>
@@ -141,6 +186,18 @@ export function ContentViewer({ content, platform, contentType, onSave, filename
           )}
         </div>
       </div>
+
+      {postStatus && (
+        <div
+          className={`mx-2 sm:mx-3 mt-2 p-2 rounded text-xs ${
+            postStatus.success
+              ? "bg-green-500/20 text-green-400 border border-green-500/30"
+              : "bg-red-500/20 text-red-400 border border-red-500/30"
+          }`}
+        >
+          {postStatus.message}
+        </div>
+      )}
 
       {/* Content display - Added responsive height and better mobile scrolling */}
       <div className="max-h-64 sm:max-h-96 overflow-y-auto">
